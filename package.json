@@ -2,17 +2,22 @@
   "name": "prisma-postgres-example",
   "license": "MIT",
   "scripts": {
-    "dev": "tsx src/app.ts"
+    "start:server": "npx tsx src/index.ts", 
+    "start:client": "npm run dev --prefix client",
+    "dev": "concurrently \"npm run start:server\" \"npm run start:client\""
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.1.0",
     "@prisma/client": "^7.1.0",
+    "cors": "^2.8.6",
     "dotenv": "^17.2.3",
     "express": "^5.2.1"
   },
   "devDependencies": {
+    "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
     "@types/node": "^22.15.21",
+    "concurrently": "^9.2.1",
     "prisma": "^7.1.0",
     "tsx": "^4.19.4",
     "typescript": "^5.8.3"
