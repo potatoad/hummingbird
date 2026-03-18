@@ -1,0 +1,58 @@
+generator client {
+  provider   = "prisma-client"
+  output     = "./generated"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Junket {
+  id          String   @id @default(uuid())
+  name        String
+  description String?  // The '?' makes this field optional
+  location    String?
+  days        Day[]    // One-to-Many relation to Days
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Day {
+  id        String   @id @default(uuid())
+  date      DateTime @db.Date // Stores just the date (YYYY-MM-DD), no time zone mess
+  
+  junketId  String
+  junket    Junket   @relation(fields: [junketId], references: [id], onDelete: Cascade)
+  
+  rooms     Room[]   // One-to-Many relation to Rooms
+}
+
+model Room {
+  id        String   @id @default(uuid())
+  name      String
+  producer  String?
+  timer     String?
+  tech      String?
+  streamKey String?
+  
+  dayId     String
+  day       Day      @relation(fields: [dayId], references: [id], onDelete: Cascade)
+  
+  slots     Slot[]   // One-to-Many relation to Slots
+}
+
+model Slot {
+  id          String   @id @default(uuid())
+  title       String
+  description String?
+  duration    Int      // Duration in seconds (e.g., 30, 60, 90)
+  isVirtual   Boolean @default(false)
+  isNote      Boolean @default(false)
+  
+  // The secret weapon for Drag and Drop
+  orderIndex  Float    
+  
+  roomId      String
+  room        Room     @relation(fields: [roomId], references: [id], onDelete: Cascade)
+}
