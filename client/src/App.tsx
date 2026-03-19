@@ -1,204 +1,266 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react'
+import { io } from 'socket.io-client'
+import { DragDropContext, Droppable, Draggable, type DropResult } from '@hello-pangea/dnd'
+import {
+  Container, Box, FormControl, InputLabel, Select, MenuItem,
+  Tabs, Tab, Typography, Paper, Card, CardContent, List, ListItem,
+} from '@mui/material'
+import './App.css'
 
-const API_URL = '';
+const API_URL = '' // using Vite proxy
 
-function App() {
-  const [junkets, setJunkets] = useState([]);
-  
-  // Form States
-  const [junketName, setJunketName] = useState('');
-  
-  const [dayDate, setDayDate] = useState('');
-  const [selectedJunketId, setSelectedJunketId] = useState('');
-  
-  const [roomName, setRoomName] = useState('');
-  const [selectedDayId, setSelectedDayId] = useState('');
-  
-  const [slotTitle, setSlotTitle] = useState('');
-  const [slotDuration, setSlotDuration] = useState('');
-  const [slotOrder, setSlotOrder] = useState('');
-  const [selectedRoomId, setSelectedRoomId] = useState('');
+type Slot = { id: string; title: string; duration: number; orderIndex: number; roomId: string }
+type Room = { id: string; name: string; slots: Slot[] }
+type Day = { id: string; date: string; rooms: Room[] }
+type Junket = { id: string; name: string; days: Day[] }
 
-  // Fetch all junkets (with nested days, rooms, slots based on our Express route)
-  const fetchJunkets = async () => {
-    try {
-      const res = await fetch(`${API_URL}/junkets`);
-      const data = await res.json();
-      setJunkets(data);
-    } catch (error) {
-      console.error('Failed to fetch junkets:', error);
-    }
-  };
-
-  useEffect(() => {
-    fetchJunkets();
-  }, []);
-
-  // ---------------- Handlers ----------------
-
-  const handleCreateJunket = async (e) => {
-    e.preventDefault();
-    await fetch(`${API_URL}/junkets`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name: junketName })
-    });
-    setJunketName('');
-    fetchJunkets();
-  };
-
-  const handleCreateDay = async (e) => {
-    e.preventDefault();
-    await fetch(`${API_URL}/days`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ date: dayDate, junketId: selectedJunketId })
-    });
-    setDayDate('');
-    fetchJunkets();
-  };
-
-  const handleCreateRoom = async (e) => {
-    e.preventDefault();
-    await fetch(`${API_URL}/rooms`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name: roomName, dayId: selectedDayId })
-    });
-    setRoomName('');
-    fetchJunkets();
-  };
-
-  const handleCreateSlot = async (e) => {
-    e.preventDefault();
-    await fetch(`${API_URL}/slots`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ 
-        title: slotTitle, 
-        duration: parseInt(slotDuration), 
-        orderIndex: parseFloat(slotOrder), 
-        roomId: selectedRoomId 
-      })
-    });
-    setSlotTitle('');
-    setSlotDuration('');
-    setSlotOrder('');
-    fetchJunkets();
-  };
-
-  const handleDeleteJunket = async (id) => {
-    await fetch(`${API_URL}/junkets/${id}`, { method: 'DELETE' });
-    fetchJunkets();
-  };
-
-  // ---------------- Render Helpers to extract flat lists for dropdowns ----------------
-  const allDays = junkets.flatMap(j => j.days || []);
-  const allRooms = allDays.flatMap(d => d.rooms || []);
-
-  return (
-    <div style={{ padding: '20px', fontFamily: 'sans-serif', maxWidth: '800px', margin: '0 auto' }}>
-      <h1>Junket Management</h1>
-
-      {/* --- FORMS --- */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '40px' }}>
-        
-        {/* Junket Form */}
-        <form onSubmit={handleCreateJunket} style={formStyle}>
-          <h3>Create Junket</h3>
-          <input required placeholder="Junket Name" value={junketName} onChange={e => setJunketName(e.target.value)} />
-          <button type="submit">Add Junket</button>
-        </form>
-
-        {/* Day Form */}
-        <form onSubmit={handleCreateDay} style={formStyle}>
-          <h3>Create Day</h3>
-          <select required value={selectedJunketId} onChange={e => setSelectedJunketId(e.target.value)}>
-            <option value="">Select a Junket...</option>
-            {junkets.map(j => <option key={j.id} value={j.id}>{j.name}</option>)}
-          </select>
-          <input required type="date" value={dayDate} onChange={e => setDayDate(e.target.value)} />
-          <button type="submit">Add Day</button>
-        </form>
-
-        {/* Room Form */}
-        <form onSubmit={handleCreateRoom} style={formStyle}>
-          <h3>Create Room</h3>
-          <select required value={selectedDayId} onChange={e => setSelectedDayId(e.target.value)}>
-            <option value="">Select a Day...</option>
-            {allDays.map(d => <option key={d.id} value={d.id}>{new Date(d.date).toLocaleDateString()}</option>)}
-          </select>
-          <input required placeholder="Room Name" value={roomName} onChange={e => setRoomName(e.target.value)} />
-          <button type="submit">Add Room</button>
-        </form>
-
-        {/* Slot Form */}
-        <form onSubmit={handleCreateSlot} style={formStyle}>
-          <h3>Create Slot</h3>
-          <select required value={selectedRoomId} onChange={e => setSelectedRoomId(e.target.value)}>
-            <option value="">Select a Room...</option>
-            {allRooms.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
-          </select>
-          <input required placeholder="Slot Title" value={slotTitle} onChange={e => setSlotTitle(e.target.value)} />
-          <input required type="number" placeholder="Duration (sec)" value={slotDuration} onChange={e => setSlotDuration(e.target.value)} />
-          <input required type="number" step="0.1" placeholder="Order Index" value={slotOrder} onChange={e => setSlotOrder(e.target.value)} />
-          <button type="submit">Add Slot</button>
-        </form>
-      </div>
-
-      {/* --- DATA DISPLAY --- */}
-      <h2>Current Data</h2>
-      {junkets.length === 0 && <p>No junkets found. Create one above!</p>}
-      
-      {junkets.map(junket => (
-        <div key={junket.id} style={cardStyle}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <h2 style={{ margin: 0 }}>{junket.name}</h2>
-            <button onClick={() => handleDeleteJunket(junket.id)} style={{ backgroundColor: '#ff4d4d', color: 'white', border: 'none', padding: '5px 10px', cursor: 'pointer' }}>Delete</button>
-          </div>
-          
-          {junket.days?.map(day => (
-            <div key={day.id} style={{ marginLeft: '20px', marginTop: '10px', paddingLeft: '10px', borderLeft: '2px solid #ccc' }}>
-              <strong>Day:</strong> {new Date(day.date).toLocaleDateString()}
-              
-              {day.rooms?.map(room => (
-                <div key={room.id} style={{ marginLeft: '20px', marginTop: '5px' }}>
-                  <strong>Room:</strong> {room.name}
-                  
-                  <ul style={{ margin: '5px 0' }}>
-                    {room.slots?.map(slot => (
-                      <li key={slot.id}>
-                        {slot.title} ({slot.duration}s) - Order: {slot.orderIndex}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              ))}
-            </div>
-          ))}
-        </div>
-      ))}
-    </div>
-  );
+interface TabPanelProps {
+  children?: React.ReactNode
+  index: number
+  value: number
 }
 
-// Basic inline styles to make it look acceptable
-const formStyle = {
-  display: 'flex',
-  flexDirection: 'column',
-  gap: '10px',
-  padding: '15px',
-  border: '1px solid #ddd',
-  borderRadius: '8px',
-  backgroundColor: '#f9f9f9'
-};
+function CustomTabPanel(props: TabPanelProps) {
+  const { children, value, index, ...other } = props
+  return (
+    <div role="tabpanel" hidden={value !== index} style={{ height: '100%' }} {...other}>
+      {value === index && <Box sx={{ pt: 3, height: '100%' }}>{children}</Box>}
+    </div>
+  )
+}
 
-const cardStyle = {
-  border: '1px solid #ccc',
-  borderRadius: '8px',
-  padding: '15px',
-  marginBottom: '15px',
-  backgroundColor: '#fff'
-};
+export default function App() {
+  const [junkets, setJunkets] = useState<Junket[]>([])
+  const [selectedJunketId, setSelectedJunketId] = useState<string>('')
+  const [activeTabIndex, setActiveTabIndex] = useState(0)
+  const [highlightedSlots, setHighlightedSlots] = useState<string[]>([])
 
-export default App;
+  const fetchJunkets = async () => {
+    try {
+      const res = await fetch(`${API_URL}/junkets`)
+      const data = await res.json()
+      setJunkets(data)
+      if (data.length > 0 && !selectedJunketId) {
+        setSelectedJunketId(data[0].id)
+      }
+    } catch (error) {
+      console.error('Failed to fetch junkets:', error)
+    }
+  }
+
+  const highlightSlot = useCallback((id: string) => {
+    setHighlightedSlots((prev) => [...prev, id])
+
+    setTimeout(() => {
+      setHighlightedSlots((prev) => prev.filter((slotId) => slotId !== id))
+    }, 2000) // Highlight duration (2 seconds)
+  }, [])
+
+  useEffect(() => {
+    fetchJunkets()
+    const socket = io()
+
+    // UPDATE: Listen for the payload containing the slotId
+    socket.on('board-updated', (data) => {
+      fetchJunkets()
+      if (data && data.slotId) {
+        highlightSlot(data.slotId)
+      }
+    })
+
+    return () => {
+      socket.off('board-updated')
+      socket.disconnect()
+    }
+  }, [highlightSlot])
+
+  useEffect(() => {
+    // Connect to the socket server (proxied via Vite)
+    const socket = io()
+
+    // Listen for the broadcast event from the server
+    socket.on('board-updated', () => {
+      console.log('Another user updated the board. Refreshing data...')
+      fetchJunkets()
+    })
+
+    // Cleanup on unmount
+    return () => {
+      socket.off('board-updated')
+      socket.disconnect()
+    }
+  }, [])
+
+  const handleDragEnd = async (result: DropResult) => {
+    const { destination, source, draggableId } = result
+
+    // Dropped outside a valid list or didn't move
+    if (!destination) return
+    if (destination.droppableId === source.droppableId && destination.index === source.index) return
+
+    // Deep clone junkets to optimistically update UI
+    const newJunkets = JSON.parse(JSON.stringify(junkets)) as Junket[]
+    const currentJunket = newJunkets.find(j => j.id === selectedJunketId)
+    if (!currentJunket) return
+
+    const currentDay = currentJunket.days[activeTabIndex]
+    const sourceRoom = currentDay.rooms.find(r => r.id === source.droppableId)
+    const destRoom = currentDay.rooms.find(r => r.id === destination.droppableId)
+
+    if (!sourceRoom || !destRoom) return
+
+    // Remove slot from source
+    const [movedSlot] = sourceRoom.slots.splice(source.index, 1)
+
+    // Calculate new orderIndex (midpoint math)
+    let newOrderIndex = 0
+    if (destRoom.slots.length === 0) {
+      newOrderIndex = 1 // First item in empty room
+    } else if (destination.index === 0) {
+      newOrderIndex = destRoom.slots[0].orderIndex - 1 // Dropped at the top
+    } else if (destination.index >= destRoom.slots.length) {
+      newOrderIndex = destRoom.slots[destRoom.slots.length - 1].orderIndex + 1 // Dropped at the bottom
+    } else {
+      // Dropped in the middle
+      const prevOrder = destRoom.slots[destination.index - 1].orderIndex
+      const nextOrder = destRoom.slots[destination.index].orderIndex
+      newOrderIndex = (prevOrder + nextOrder) / 2
+    }
+
+    // Update slot data
+    movedSlot.orderIndex = newOrderIndex
+    movedSlot.roomId = destRoom.id
+
+    // Add to destination
+    destRoom.slots.splice(destination.index, 0, movedSlot)
+
+    highlightSlot(draggableId)
+
+    // Optimistically update UI
+    setJunkets(newJunkets)
+
+    // Persist to backend
+    try {
+      await fetch(`${API_URL}/slots/${draggableId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orderIndex: newOrderIndex, roomId: destRoom.id }),
+      })
+    } catch (error) {
+      console.error('Failed to update slot order:', error)
+      fetchJunkets() // Revert on failure
+    }
+  }
+
+  const selectedJunket = junkets.find((j) => j.id === selectedJunketId)
+  const days = selectedJunket?.days || []
+
+  return (
+    <Container maxWidth="xl" sx={{ height: '100vh', display: 'flex', flexDirection: 'column', py: 4 }}>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+        <Typography variant="h4" component="h1" fontWeight="bold">Junket Board</Typography>
+        <FormControl sx={{ minWidth: 250 }}>
+          <InputLabel>Select Junket</InputLabel>
+          <Select
+            value={selectedJunketId}
+            label="Select Junket"
+            onChange={(e) => {
+              setSelectedJunketId(e.target.value)
+              setActiveTabIndex(0)
+            }}
+          >
+            {junkets.map((junket) => (
+              <MenuItem key={junket.id} value={junket.id}>{junket.name}</MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+      </Box>
+
+      {selectedJunket && days.length > 0 ? (
+        <Box sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+          <Tabs value={activeTabIndex} onChange={(_, val) => setActiveTabIndex(val)} variant="scrollable">
+            {days.map((day) => (
+              <Tab key={day.id} label={new Date(day.date).toLocaleDateString()} />
+            ))}
+          </Tabs>
+
+          {/* DRAG DROP CONTEXT */}
+          <DragDropContext onDragEnd={handleDragEnd}>
+            {days.map((day, index) => (
+              <CustomTabPanel key={day.id} value={activeTabIndex} index={index}>
+                <Box sx={{ display: 'flex', gap: 3, overflowX: 'auto', pb: 2, height: '100%' }}>
+
+                  {day.rooms.map((room) => (
+                    <Paper key={room.id} sx={{ minWidth: 320, maxWidth: 320, bgcolor: 'grey.100', display: 'flex', flexDirection: 'column', maxHeight: 'calc(100vh - 250px)' }}>
+                      <Box sx={{ p: 2, bgcolor: 'primary.main', color: 'primary.contrastText', borderTopLeftRadius: 4, borderTopRightRadius: 4 }}>
+                        <Typography variant="h6">{room.name}</Typography>
+                      </Box>
+
+                      {/* DROPPABLE AREA (The Column) */}
+                      <Droppable droppableId={room.id}>
+                        {(provided, snapshot) => (
+                          <List
+                            {...provided.droppableProps}
+                            ref={provided.innerRef}
+                            sx={{
+                              p: 2,
+                              overflowY: 'auto',
+                              flexGrow: 1,
+                              // bgcolor: snapshot.isDraggingOver ? 'grey.300' : 'transparent',
+                              transition: 'background-color 0.2s ease',
+                            }}
+                          >
+                            {room.slots
+                              .sort((a, b) => a.orderIndex - b.orderIndex)
+                              .map((slot, index) => {
+                                // CHECK IF THIS SLOT IS HIGHLIGHTED
+                                const isHighlighted = highlightedSlots.includes(slot.id)
+
+                                return (
+                                  <Draggable key={slot.id} draggableId={slot.id} index={index}>
+                                    {(provided, snapshot) => (
+                                      <ListItem
+                                        ref={provided.innerRef}
+                                        {...provided.draggableProps}
+                                        {...provided.dragHandleProps}
+                                        disablePadding
+                                        sx={{ mb: 1.5, ...provided.draggableProps.style }}
+                                        className={`${isHighlighted ? 'item-dropped-glow' : ''}`}
+                                      >
+                                        <Card sx={{
+                                          width: '100%',
+                                          boxShadow: snapshot.isDragging ? 6 : 2
+                                        }}
+                                        >
+                                          <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
+                                            <Typography variant="subtitle1" fontWeight="bold">
+                                              {slot.title}
+                                            </Typography>
+                                            <Typography variant="body2" color="text.secondary">
+                                              Duration: {slot.duration / 60} min
+                                            </Typography>
+                                          </CardContent>
+                                        </Card>
+
+                                      </ListItem>
+                                    )}
+                                  </Draggable>
+                                )
+                              })}
+                            {provided.placeholder}
+                          </List>
+                        )}
+                      </Droppable>
+                    </Paper>
+                  ))}
+                </Box>
+              </CustomTabPanel>
+            ))}
+          </DragDropContext>
+        </Box>
+      ) : (
+        <Typography color="text.secondary">No data available.</Typography>
+      )}
+    </Container>
+  )
+}
