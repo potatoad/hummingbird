@@ -1,15 +1,25 @@
 @keyframes glowAndFade {
   0% {
+    /* Fade out completely */
+    box-shadow: 0 0 0px rgba(3, 169, 244, 0);
+    transform: scale(1); /* Return to normal size */
+  }
+  15% {
+    /* Fade out completely */
+    box-shadow: 0 0 0px rgba(3, 169, 244, 0);
+    transform: scale(1); /* Return to normal size */
+  }
+  17% {
     /* Initial bright glow */
-    box-shadow: 
-      0 0 1cap rgba(3, 169, 244, 0.8), /* inner cyan */
-      0 0 2px rgba(3, 169, 244, 0.6),
+    box-shadow:
+      0 0 1cap rgba(3, 169, 244, 0.8),
+      /* inner cyan */ 0 0 2px rgba(3, 169, 244, 0.6),
       0 0 3px rgba(3, 169, 244, 0.4); /* outer halo */
     transform: scale(1.02); /* Slight scale up for emphasis */
   }
   50% {
     /* Hold the peak glow for a moment */
-    box-shadow: 
+    box-shadow:
       0 0 2cap rgba(3, 169, 244, 0.7),
       0 0 4px rgba(3, 169, 244, 0.5),
       0 0 6px rgba(3, 169, 244, 0.3);
