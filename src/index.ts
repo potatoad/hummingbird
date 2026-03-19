@@ -194,22 +194,33 @@ app.get('/slots', async (req: Request, res: Response) => {
 })
 
 // Update a Slot (used for drag and drop reordering)
-app.patch('/slots/:id', async (req: Request, res: Response) => {
-  try {
-    const { id } = req.params
-    const { orderIndex, roomId } = req.body
+app.patch('/slots/:id', async (req, res) => {
+  const { id } = req.params
+  const { orderIndex, roomId } = req.body
 
+  // The frontend will send its socket ID in the headers
+  const senderSocketId = req.headers['x-socket-id'] as string
+
+  try {
+    // 1. Update the database using Prisma
     const updatedSlot = await prisma.slot.update({
       where: { id },
-      data: {
-        ...(orderIndex !== undefined && { orderIndex }),
-        ...(roomId !== undefined && { roomId }),
-      },
+      data: { orderIndex, roomId },
     })
-    io.emit('board-updated', { slotId: updatedSlot.id })
+
+    // 2. Broadcast the update to everyone EXCEPT the person who made the change
+    if (senderSocketId) {
+      // If we know who sent it, skip them
+      io.except(senderSocketId).emit('board-updated', { slotId: id })
+    } else {
+      // Fallback: send to everyone
+      io.emit('board-updated', { slotId: id })
+    }
+
     res.json(updatedSlot)
   } catch (error) {
-    res.status(400).json({ error: 'Failed to update slot', details: error })
+    console.error('Error updating slot:', error)
+    res.status(500).json({ error: 'Failed to update slot' })
   }
 })
 

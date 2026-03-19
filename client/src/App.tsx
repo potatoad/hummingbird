@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { io } from 'socket.io-client'
 import { DragDropContext, Droppable, Draggable, type DropResult } from '@hello-pangea/dnd'
 import {
@@ -35,6 +35,8 @@ export default function App() {
   const [activeTabIndex, setActiveTabIndex] = useState(0)
   const [highlightedSlots, setHighlightedSlots] = useState<string[]>([])
 
+  const socketRef = useRef<Socket | null>(null)
+
   const fetchJunkets = async () => {
     try {
       const res = await fetch(`${API_URL}/junkets`)
@@ -53,15 +55,17 @@ export default function App() {
 
     setTimeout(() => {
       setHighlightedSlots((prev) => prev.filter((slotId) => slotId !== id))
-    }, 2000) // Highlight duration (2 seconds)
+    }, 1500) // Matched to the 1.5s animation duration in App.css
   }, [])
 
   useEffect(() => {
     fetchJunkets()
-    const socket = io()
 
-    // UPDATE: Listen for the payload containing the slotId
-    socket.on('board-updated', (data) => {
+    // Combined socket listener: Fetches new data and triggers glow if a slotId is provided
+    socketRef.current = io()
+
+    socketRef.current.on('board-updated', (data) => {
+      console.log('Another user updated the board. Refreshing data...')
       fetchJunkets()
       if (data && data.slotId) {
         highlightSlot(data.slotId)
@@ -69,27 +73,10 @@ export default function App() {
     })
 
     return () => {
-      socket.off('board-updated')
-      socket.disconnect()
+      socketRef.current?.off('board-updated')
+      socketRef.current?.disconnect()
     }
   }, [highlightSlot])
-
-  useEffect(() => {
-    // Connect to the socket server (proxied via Vite)
-    const socket = io()
-
-    // Listen for the broadcast event from the server
-    socket.on('board-updated', () => {
-      console.log('Another user updated the board. Refreshing data...')
-      fetchJunkets()
-    })
-
-    // Cleanup on unmount
-    return () => {
-      socket.off('board-updated')
-      socket.disconnect()
-    }
-  }, [])
 
   const handleDragEnd = async (result: DropResult) => {
     const { destination, source, draggableId } = result
@@ -134,7 +121,7 @@ export default function App() {
     // Add to destination
     destRoom.slots.splice(destination.index, 0, movedSlot)
 
-    highlightSlot(draggableId)
+    // NOTE: highlightSlot(draggableId) has been REMOVED from here.
 
     // Optimistically update UI
     setJunkets(newJunkets)
@@ -143,7 +130,11 @@ export default function App() {
     try {
       await fetch(`${API_URL}/slots/${draggableId}`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          // Pass the socket ID so the server knows to ignore us!
+          'x-socket-id': socketRef.current?.id || ''
+        },
         body: JSON.stringify({ orderIndex: newOrderIndex, roomId: destRoom.id }),
       })
     } catch (error) {
@@ -198,7 +189,7 @@ export default function App() {
 
                       {/* DROPPABLE AREA (The Column) */}
                       <Droppable droppableId={room.id}>
-                        {(provided, snapshot) => (
+                        {(provided) => (
                           <List
                             {...provided.droppableProps}
                             ref={provided.innerRef}
@@ -206,14 +197,12 @@ export default function App() {
                               p: 2,
                               overflowY: 'auto',
                               flexGrow: 1,
-                              // bgcolor: snapshot.isDraggingOver ? 'grey.300' : 'transparent',
                               transition: 'background-color 0.2s ease',
                             }}
                           >
                             {room.slots
                               .sort((a, b) => a.orderIndex - b.orderIndex)
                               .map((slot, index) => {
-                                // CHECK IF THIS SLOT IS HIGHLIGHTED
                                 const isHighlighted = highlightedSlots.includes(slot.id)
 
                                 return (
@@ -225,12 +214,13 @@ export default function App() {
                                         {...provided.dragHandleProps}
                                         disablePadding
                                         sx={{ mb: 1.5, ...provided.draggableProps.style }}
-                                        className={`${isHighlighted ? 'item-dropped-glow' : ''}`}
                                       >
-                                        <Card sx={{
-                                          width: '100%',
-                                          boxShadow: snapshot.isDragging ? 6 : 2
-                                        }}
+                                        <Card
+                                          className={`${isHighlighted ? 'item-dropped-glow' : ''}`} // Moved class here
+                                          sx={{
+                                            width: '100%',
+                                            boxShadow: snapshot.isDragging ? 6 : 2
+                                          }}
                                         >
                                           <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
                                             <Typography variant="subtitle1" fontWeight="bold">
@@ -241,7 +231,6 @@ export default function App() {
                                             </Typography>
                                           </CardContent>
                                         </Card>
-
                                       </ListItem>
                                     )}
                                   </Draggable>
