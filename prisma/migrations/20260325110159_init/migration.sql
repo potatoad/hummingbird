@@ -1,3 +1,9 @@
+-- CreateEnum
+CREATE TYPE "SlotType" AS ENUM ('TALENT', 'INTERVIEW', 'NOTE', 'BUFFER', 'BREAK');
+
+-- CreateEnum
+CREATE TYPE "Status" AS ENUM ('BLANK', 'ARRIVED', 'WAITING', 'INTERVIEW', 'COMPLETED', 'CANCELLED');
+
 -- CreateTable
 CREATE TABLE "Junket" (
     "id" TEXT NOT NULL,
@@ -14,6 +20,12 @@ CREATE TABLE "Junket" (
 CREATE TABLE "Day" (
     "id" TEXT NOT NULL,
     "date" DATE NOT NULL,
+    "greenroom" BOOLEAN NOT NULL DEFAULT false,
+    "greenroomUrl" TEXT,
+    "greenroomPassword" TEXT,
+    "pressHospitalityURL" TEXT,
+    "pressHospitalityID" TEXT,
+    "pressHospitalityPassword" TEXT,
     "junketId" TEXT NOT NULL,
 
     CONSTRAINT "Day_pkey" PRIMARY KEY ("id")
@@ -25,8 +37,15 @@ CREATE TABLE "Room" (
     "name" TEXT NOT NULL,
     "producer" TEXT,
     "timer" TEXT,
-    "tech" TEXT,
-    "streamKey" TEXT,
+    "technician" TEXT,
+    "streamURL" TEXT,
+    "checkInBuffer" INTEGER NOT NULL DEFAULT 60,
+    "localTimeOffset" INTEGER NOT NULL DEFAULT 0,
+    "turnaround" INTEGER NOT NULL DEFAULT 60,
+    "plannedStartTime" TIMESTAMP(3),
+    "actualStartTime" TIMESTAMP(3),
+    "plannedEndTime" TIMESTAMP(3),
+    "actualEndTime" TIMESTAMP(3),
     "dayId" TEXT NOT NULL,
 
     CONSTRAINT "Room_pkey" PRIMARY KEY ("id")
@@ -37,9 +56,15 @@ CREATE TABLE "Slot" (
     "id" TEXT NOT NULL,
     "title" TEXT NOT NULL,
     "description" TEXT,
-    "duration" INTEGER NOT NULL,
+    "status" "Status" NOT NULL DEFAULT 'BLANK',
     "isVirtual" BOOLEAN NOT NULL DEFAULT false,
-    "isNote" BOOLEAN NOT NULL DEFAULT false,
+    "SlotType" "SlotType" NOT NULL DEFAULT 'INTERVIEW',
+    "checkInTime" TIMESTAMPTZ,
+    "plannedStartTime" TIMESTAMPTZ,
+    "duration" INTEGER,
+    "plannedEndTime" TIMESTAMPTZ,
+    "actualStartTime" TIMESTAMPTZ,
+    "actualEndTime" TIMESTAMPTZ,
     "orderIndex" DOUBLE PRECISION NOT NULL,
     "roomId" TEXT NOT NULL,
 

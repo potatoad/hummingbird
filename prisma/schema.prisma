@@ -1,6 +1,6 @@
 generator client {
-  provider   = "prisma-client"
-  output     = "./generated"
+  provider = "prisma-client"
+  output   = "../generated/prisma"
 }
 
 datasource db {
@@ -10,49 +10,77 @@ datasource db {
 model Junket {
   id          String   @id @default(uuid())
   name        String
-  description String?  // The '?' makes this field optional
+  description String?
   location    String?
-  days        Day[]    // One-to-Many relation to Days
-  
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+  days        Day[]
 }
 
 model Day {
-  id        String   @id @default(uuid())
-  date      DateTime @db.Date // Stores just the date (YYYY-MM-DD), no time zone mess
-  
-  junketId  String
-  junket    Junket   @relation(fields: [junketId], references: [id], onDelete: Cascade)
-  
-  rooms     Room[]   // One-to-Many relation to Rooms
+  id                       String   @id @default(uuid())
+  date                     DateTime @db.Date
+  greenroom                Boolean  @default(false)
+  greenroomUrl             String?
+  greenroomPassword        String?
+  pressHospitalityURL      String?
+  pressHospitalityID       String?
+  pressHospitalityPassword String?
+  junketId                 String
+  junket                   Junket   @relation(fields: [junketId], references: [id], onDelete: Cascade)
+  rooms                    Room[]
 }
 
 model Room {
-  id        String   @id @default(uuid())
-  name      String
-  producer  String?
-  timer     String?
-  tech      String?
-  streamKey String?
-  
-  dayId     String
-  day       Day      @relation(fields: [dayId], references: [id], onDelete: Cascade)
-  
-  slots     Slot[]   // One-to-Many relation to Slots
+  id               String    @id @default(uuid())
+  name             String
+  producer         String?
+  timer            String?
+  technician       String?
+  streamURL        String?
+  checkInBuffer    Int       @default(60)
+  localTimeOffset  Int       @default(0)
+  turnaround       Int       @default(60)
+  plannedStartTime DateTime?
+  actualStartTime  DateTime?
+  plannedEndTime   DateTime?
+  actualEndTime    DateTime?
+  dayId            String
+  day              Day       @relation(fields: [dayId], references: [id], onDelete: Cascade)
+  slots            Slot[]
 }
 
 model Slot {
-  id          String   @id @default(uuid())
-  title       String
-  description String?
-  duration    Int      // Duration in seconds (e.g., 30, 60, 90)
-  isVirtual   Boolean @default(false)
-  isNote      Boolean @default(false)
-  
-  // The secret weapon for Drag and Drop
-  orderIndex  Float    
-  
-  roomId      String
-  room        Room     @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  id               String    @id @default(uuid())
+  title            String
+  description      String?
+  status           Status    @default(BLANK)
+  isVirtual        Boolean   @default(false)
+  SlotType         SlotType  @default(INTERVIEW)
+  checkInTime      DateTime? @db.Timestamptz(6)
+  plannedStartTime DateTime? @db.Timestamptz(6)
+  duration         Int?
+  plannedEndTime   DateTime? @db.Timestamptz(6)
+  actualStartTime  DateTime? @db.Timestamptz(6)
+  actualEndTime    DateTime? @db.Timestamptz(6)
+  orderIndex       Float
+  roomId           String
+  room             Room      @relation(fields: [roomId], references: [id], onDelete: Cascade)
+}
+
+enum SlotType {
+  TALENT
+  INTERVIEW
+  NOTE
+  BUFFER
+  BREAK
+}
+
+enum Status {
+  BLANK
+  ARRIVED
+  WAITING
+  INTERVIEW
+  COMPLETED
+  CANCELLED
 }

@@ -1,7 +1,7 @@
 import 'dotenv/config'
 
 import express, { Request, Response } from 'express'
-import { PrismaClient } from '../prisma/generated/client'
+import { PrismaClient } from '../generated/prisma/client'
 import { PrismaPg } from '@prisma/adapter-pg'
 import cors from 'cors'
 import { createServer } from 'http'

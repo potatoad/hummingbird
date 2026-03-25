@@ -1,5 +1,5 @@
 import React from 'react';
-import { DragDropContext, DropResult } from '@hello-pangea/dnd';
+import { DragDropContext, type DropResult } from '@hello-pangea/dnd';
 import { Tabs, Tab, Box } from '@mui/material';
 import DayComponent from '../day/Day';
 

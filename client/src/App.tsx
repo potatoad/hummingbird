@@ -23,7 +23,7 @@ export default function App() {
 
   const socketRef = useRef<Socket | null>(null)
 
-  const fetchJunkets = async () => {
+  const fetchJunkets = useCallback(async () => {
     try {
       const res = await fetch(`${API_URL}/junkets`)
       const data = await res.json()
@@ -34,7 +34,7 @@ export default function App() {
     } catch (error) {
       console.error('Failed to fetch junkets:', error)
     }
-  }
+  }, [selectedJunketId])
 
   const highlightSlot = useCallback((id: string) => {
     setHighlightedSlots((prev) => [...prev, id])
@@ -45,7 +45,10 @@ export default function App() {
   }, [])
 
   useEffect(() => {
-    fetchJunkets()
+    const initFetch = async () => {
+      await fetchJunkets()
+    }
+    initFetch()
 
     // Combined socket listener: Fetches new data and triggers glow if a slotId is provided
     socketRef.current = io()
@@ -62,7 +65,7 @@ export default function App() {
       socketRef.current?.off('board-updated')
       socketRef.current?.disconnect()
     }
-  }, [highlightSlot])
+  }, [highlightSlot, fetchJunkets])
 
   const handleDragEnd = async (result: DropResult) => {
     const { destination, source, draggableId } = result
