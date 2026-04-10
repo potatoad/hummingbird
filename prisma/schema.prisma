@@ -8,19 +8,19 @@ datasource db {
 }
 
 model Junket {
-  id          String   @id @default(uuid())
+  id          String    @id @default(uuid())
   name        String
   description String?
   location    String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
   days        Day[]
 }
 
 model Day {
-  id                       String   @id @default(uuid())
-  date                     DateTime @db.Date
-  greenroom                Boolean  @default(false)
+  id                       String    @id @default(uuid())
+  date                     DateTime  @db.Date
+  greenroom                Boolean   @default(false)
   greenroomUrl             String?
   greenroomPassword        String?
   pressHospitalityURL      String?
@@ -32,15 +32,16 @@ model Day {
 }
 
 model Room {
-  id               String    @id @default(uuid())
+  id               String     @id @default(uuid())
+  colour           String     @default("#ffffff")
   name             String
   producer         String?
   timer            String?
   technician       String?
   streamURL        String?
-  checkInBuffer    Int       @default(60)
-  localTimeOffset  Int       @default(0)
-  turnaround       Int       @default(60)
+  checkInBuffer    Int        @default(60)
+  localTimeOffset  Int        @default(0)
+  turnaround       Int        @default(60)
   plannedStartTime DateTime?
   actualStartTime  DateTime?
   plannedEndTime   DateTime?
@@ -51,18 +52,19 @@ model Room {
 }
 
 model Slot {
-  id               String    @id @default(uuid())
+  id               String     @id @default(uuid())
   title            String
   description      String?
-  status           Status    @default(BLANK)
-  isVirtual        Boolean   @default(false)
-  SlotType         SlotType  @default(INTERVIEW)
-  checkInTime      DateTime? @db.Timestamptz(6)
-  plannedStartTime DateTime? @db.Timestamptz(6)
+  colour           String     @default("#ffffff")
+  status           Status     @default(BLANK)
+  isVirtual        Boolean    @default(false)
+  slotType         SlotType   @default(INTERVIEW)
+  checkInTime      DateTime?  @db.Timestamptz(6)
+  plannedStartTime DateTime?  @db.Timestamptz(6)
   duration         Int?
-  plannedEndTime   DateTime? @db.Timestamptz(6)
-  actualStartTime  DateTime? @db.Timestamptz(6)
-  actualEndTime    DateTime? @db.Timestamptz(6)
+  plannedEndTime   DateTime?  @db.Timestamptz(6)
+  actualStartTime  DateTime?  @db.Timestamptz(6)
+  actualEndTime    DateTime?  @db.Timestamptz(6)
   orderIndex       Float
   roomId           String
   room             Room      @relation(fields: [roomId], references: [id], onDelete: Cascade)

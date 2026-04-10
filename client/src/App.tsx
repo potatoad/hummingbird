@@ -1,17 +1,25 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react'
-import { io, Socket } from 'socket.io-client'
 import { type DropResult } from '@hello-pangea/dnd'
-import {
-  Container, Box, FormControl, InputLabel, Select, MenuItem,
-  Typography,
-} from '@mui/material'
-import JunketComponent from './components/junket/Junket'
+import { Box, Container, FormControl, InputLabel, MenuItem, Select, Typography } from '@mui/material'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { io, Socket } from 'socket.io-client'
 import './App.css'
+import JunketComponent from './components/junket/Junket'
 
 const API_URL = '' // using Vite proxy
 
-type Slot = { id: string; title: string; duration: number; orderIndex: number; roomId: string }
-type Room = { id: string; name: string; slots: Slot[] }
+type Slot = {
+  id: string
+  title: string
+  duration: number
+  orderIndex: number
+  roomId: string
+  isVirtual?: boolean
+  isNote?: boolean
+  slotType?: string
+  description?: string
+  colour?: string
+}
+type Room = { id: string; colour: string; name: string; slots: Slot[] }
 type Day = { id: string; date: string; rooms: Room[] }
 type Junket = { id: string; name: string; days: Day[] }
 
@@ -76,12 +84,12 @@ export default function App() {
 
     // Deep clone junkets to optimistically update UI
     const newJunkets = JSON.parse(JSON.stringify(junkets)) as Junket[]
-    const currentJunket = newJunkets.find(j => j.id === selectedJunketId)
+    const currentJunket = newJunkets.find((j) => j.id === selectedJunketId)
     if (!currentJunket) return
 
     const currentDay = currentJunket.days[activeTabIndex]
-    const sourceRoom = currentDay.rooms.find(r => r.id === source.droppableId)
-    const destRoom = currentDay.rooms.find(r => r.id === destination.droppableId)
+    const sourceRoom = currentDay.rooms.find((r) => r.id === source.droppableId)
+    const destRoom = currentDay.rooms.find((r) => r.id === destination.droppableId)
 
     if (!sourceRoom || !destRoom) return
 
@@ -122,7 +130,7 @@ export default function App() {
         headers: {
           'Content-Type': 'application/json',
           // Pass the socket ID so the server knows to ignore us!
-          'x-socket-id': socketRef.current?.id || ''
+          'x-socket-id': socketRef.current?.id || '',
         },
         body: JSON.stringify({ orderIndex: newOrderIndex, roomId: destRoom.id }),
       })
@@ -136,21 +144,25 @@ export default function App() {
   const days = selectedJunket?.days || []
 
   return (
-    <Container maxWidth="xl" sx={{ height: '100vh', display: 'flex', flexDirection: 'column', py: 4 }}>
+    <Container maxWidth='xl' sx={{ height: '100vh', display: 'flex', flexDirection: 'column', py: 4 }}>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-        <Typography variant="h4" component="h1" fontWeight="bold">Junket Board</Typography>
+        <Typography variant='h4' component='h1' fontWeight='bold'>
+          Junket Board
+        </Typography>
         <FormControl sx={{ minWidth: 250 }}>
           <InputLabel>Select Junket</InputLabel>
           <Select
             value={selectedJunketId}
-            label="Select Junket"
+            label='Select Junket'
             onChange={(e) => {
               setSelectedJunketId(e.target.value)
               setActiveTabIndex(0)
             }}
           >
             {junkets.map((junket) => (
-              <MenuItem key={junket.id} value={junket.id}>{junket.name}</MenuItem>
+              <MenuItem key={junket.id} value={junket.id}>
+                {junket.name}
+              </MenuItem>
             ))}
           </Select>
         </FormControl>
@@ -166,7 +178,7 @@ export default function App() {
           handleDragEnd={handleDragEnd}
         />
       ) : (
-        <Typography color="text.secondary">No data available.</Typography>
+        <Typography color='text.secondary'>No data available.</Typography>
       )}
     </Container>
   )

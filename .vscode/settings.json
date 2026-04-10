@@ -14,5 +14,8 @@
   "cSpell.enabled": true,
   "cSpell.allowCompoundWords": true,
   "prisma-smart-formatter.typescript.defaultFormatter": "esbenp.prettier-vscode",
-  "prisma-smart-formatter.typescriptreact.defaultFormatter": "esbenp.prettier-vscode"
+  "prisma-smart-formatter.typescriptreact.defaultFormatter": "esbenp.prettier-vscode",
+  "[prisma]": {
+    "editor.defaultFormatter": "KhanhhNe.prisma-smart-formatter"
+  }
 }

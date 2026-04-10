@@ -1,11 +1,12 @@
 import 'dotenv/config'
 
-import express, { Request, Response } from 'express'
-import { PrismaClient } from '../generated/prisma/client'
 import { PrismaPg } from '@prisma/adapter-pg'
 import cors from 'cors'
+import type { Request, Response } from 'express'
+import express from 'express'
 import { createServer } from 'http'
 import { Server } from 'socket.io'
+import { PrismaClient } from '../generated/prisma/client'
 
 const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL })
 const prisma = new PrismaClient({ adapter })
@@ -79,6 +80,28 @@ app.delete('/junkets/:id', async (req: Request, res: Response) => {
   }
 })
 
+// Update a Junket
+app.patch('/junkets/:id', async (req: Request, res: Response) => {
+  const { id } = req.params
+  const senderSocketId = req.headers['x-socket-id'] as string
+
+  try {
+    const updatedJunket = await prisma.junket.update({
+      where: { id },
+      data: req.body,
+    })
+    if (senderSocketId) {
+      io.except(senderSocketId).emit('board-updated', { junketId: id })
+    } else {
+      io.emit('board-updated', { junketId: id })
+    }
+    res.json(updatedJunket)
+  } catch (error) {
+    console.error('Error updating junket:', error)
+    res.status(500).json({ error: 'Failed to update junket' })
+  }
+})
+
 // ==========================================
 // DAY ROUTES
 // ==========================================
@@ -120,6 +143,28 @@ app.delete('/days/:id', async (req: Request, res: Response) => {
     res.status(204).send()
   } catch (error) {
     res.status(400).json({ error: 'Failed to delete day', details: error })
+  }
+})
+
+// Update a Day
+app.patch('/days/:id', async (req: Request, res: Response) => {
+  const { id } = req.params
+  const senderSocketId = req.headers['x-socket-id'] as string
+
+  try {
+    const updatedDay = await prisma.day.update({
+      where: { id },
+      data: req.body,
+    })
+    if (senderSocketId) {
+      io.except(senderSocketId).emit('board-updated', { dayId: id })
+    } else {
+      io.emit('board-updated', { dayId: id })
+    }
+    res.json(updatedDay)
+  } catch (error) {
+    console.error('Error updating day:', error)
+    res.status(500).json({ error: 'Failed to update day' })
   }
 })
 
@@ -165,6 +210,28 @@ app.delete('/rooms/:id', async (req: Request, res: Response) => {
   }
 })
 
+// Update a Room
+app.patch('/rooms/:id', async (req: Request, res: Response) => {
+  const { id } = req.params
+  const senderSocketId = req.headers['x-socket-id'] as string
+
+  try {
+    const updatedRoom = await prisma.room.update({
+      where: { id },
+      data: req.body,
+    })
+    if (senderSocketId) {
+      io.except(senderSocketId).emit('board-updated', { roomId: id })
+    } else {
+      io.emit('board-updated', { roomId: id })
+    }
+    res.json(updatedRoom)
+  } catch (error) {
+    console.error('Error updating room:', error)
+    res.status(500).json({ error: 'Failed to update room' })
+  }
+})
+
 // ==========================================
 // SLOT ROUTES
 // ==========================================
@@ -196,7 +263,7 @@ app.get('/slots', async (req: Request, res: Response) => {
 // Update a Slot (used for drag and drop reordering)
 app.patch('/slots/:id', async (req, res) => {
   const { id } = req.params
-  const { orderIndex, roomId } = req.body
+  const { orderIndex, roomId, status, isVirtual } = req.body
 
   // The frontend will send its socket ID in the headers
   const senderSocketId = req.headers['x-socket-id'] as string
@@ -205,7 +272,7 @@ app.patch('/slots/:id', async (req, res) => {
     // 1. Update the database using Prisma
     const updatedSlot = await prisma.slot.update({
       where: { id },
-      data: { orderIndex, roomId },
+      data: { orderIndex, roomId, status, isVirtual },
     })
 
     // 2. Broadcast the update to everyone EXCEPT the person who made the change
