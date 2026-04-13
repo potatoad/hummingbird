@@ -14,6 +14,10 @@ function luma(color: string) {
   return 0.2126 * rgb[0] + 0.7152 * rgb[1] + 0.0722 * rgb[2] // SMPTE C, Rec. 709 weightings
 }
 
-export default function contrastingColor(color: string) {
+export function contrastingColor(color: string) {
   return luma(color) >= 165 ? '#000000' : '#ffffff'
+}
+
+export function contrastingColorBlendMode(color: string) {
+  return luma(color) >= 165 ? 'overlay' : 'soft-light'
 }

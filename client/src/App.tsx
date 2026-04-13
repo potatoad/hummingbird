@@ -1,185 +1,77 @@
-import { type DropResult } from '@hello-pangea/dnd'
-import { Box, Container, FormControl, InputLabel, MenuItem, Select, Typography } from '@mui/material'
-import { useCallback, useEffect, useRef, useState } from 'react'
-import { io, Socket } from 'socket.io-client'
-import './App.css'
-import JunketComponent from './components/junket/Junket'
+import { DragDropContext, Draggable, Droppable, type DropResult } from '@hello-pangea/dnd'
+import { Box } from '@mui/material'
+import dayjs from 'dayjs'
+import { useMemo, useState } from 'react'
+import InterviewCard from './components/InterviewCard'
+import { data as initialData } from './data'
+import type { InterviewItem } from './types'
 
-const API_URL = '' // using Vite proxy
-
-type Slot = {
-  id: string
-  title: string
-  duration: number
-  orderIndex: number
-  roomId: string
-  isVirtual?: boolean
-  isNote?: boolean
-  slotType?: string
-  description?: string
-  colour?: string
-}
-type Room = { id: string; colour: string; name: string; slots: Slot[] }
-type Day = { id: string; date: string; rooms: Room[] }
-type Junket = { id: string; name: string; days: Day[] }
+// Configuration (you could easily move these into React state if you want them editable via a UI)
+const PRESET_START_TIME = dayjs().hour(9).minute(0).second(0) // e.g., 09:00 AM
+const TURNAROUND_SECONDS = 60
 
 export default function App() {
-  const [junkets, setJunkets] = useState<Junket[]>([])
-  const [selectedJunketId, setSelectedJunketId] = useState<string>('')
-  const [activeTabIndex, setActiveTabIndex] = useState(0)
-  const [highlightedSlots, setHighlightedSlots] = useState<string[]>([])
+  const [interviews, setInterviews] = useState<InterviewItem[]>(
+    initialData.map((item, index) => ({
+      ...item,
+      id: item.id || `interview-${index}`,
+    })),
+  )
 
-  const socketRef = useRef<Socket | null>(null)
+  // Dynamically calculate start times based on the current array order
+  const interviewsWithTimes = useMemo(() => {
+    // Using reduce avoids reassigning variables, satisfying strict React linters
+    const result = interviews.reduce(
+      (acc, item) => {
+        // 1. Assign the current time to this interview
+        const itemWithTime = {
+          ...item,
+          calculatedStartTime: acc.currentTime.format('HH:mm'), // Formats as 09:00
+        }
 
-  const fetchJunkets = useCallback(async () => {
-    try {
-      const res = await fetch(`${API_URL}/junkets`)
-      const data = await res.json()
-      setJunkets(data)
-      if (data.length > 0 && !selectedJunketId) {
-        setSelectedJunketId(data[0].id)
-      }
-    } catch (error) {
-      console.error('Failed to fetch junkets:', error)
-    }
-  }, [selectedJunketId])
+        // 2. Calculate the start time for the NEXT interview
+        const duration = Number.parseInt(item.interviewDuration.toString(), 10)
+        const nextTime = acc.currentTime.add(duration + TURNAROUND_SECONDS, 'second')
 
-  const highlightSlot = useCallback((id: string) => {
-    setHighlightedSlots((prev) => [...prev, id])
+        // 3. Return the new time and the updated array without mutating anything
+        return {
+          currentTime: nextTime,
+          items: [...acc.items, itemWithTime],
+        }
+      },
+      // Initial state: start with PRESET_START_TIME and an empty array
+      { currentTime: PRESET_START_TIME, items: [] as typeof interviews },
+    )
 
-    setTimeout(() => {
-      setHighlightedSlots((prev) => prev.filter((slotId) => slotId !== id))
-    }, 1500) // Matched to the 1.5s animation duration in App.css
-  }, [])
+    // Extract just the array of items from our result
+    return result.items
+  }, [interviews]) // Re-runs instantly whenever the drag-and-drop order changes
 
-  useEffect(() => {
-    const initFetch = async () => {
-      await fetchJunkets()
-    }
-    initFetch()
-
-    // Combined socket listener: Fetches new data and triggers glow if a slotId is provided
-    socketRef.current = io()
-
-    socketRef.current.on('board-updated', (data) => {
-      console.log('Another user updated the board. Refreshing data...')
-      fetchJunkets()
-      if (data && data.slotId) {
-        highlightSlot(data.slotId)
-      }
-    })
-
-    return () => {
-      socketRef.current?.off('board-updated')
-      socketRef.current?.disconnect()
-    }
-  }, [highlightSlot, fetchJunkets])
-
-  const handleDragEnd = async (result: DropResult) => {
-    const { destination, source, draggableId } = result
-
-    // Dropped outside a valid list or didn't move
-    if (!destination) return
-    if (destination.droppableId === source.droppableId && destination.index === source.index) return
-
-    // Deep clone junkets to optimistically update UI
-    const newJunkets = JSON.parse(JSON.stringify(junkets)) as Junket[]
-    const currentJunket = newJunkets.find((j) => j.id === selectedJunketId)
-    if (!currentJunket) return
-
-    const currentDay = currentJunket.days[activeTabIndex]
-    const sourceRoom = currentDay.rooms.find((r) => r.id === source.droppableId)
-    const destRoom = currentDay.rooms.find((r) => r.id === destination.droppableId)
-
-    if (!sourceRoom || !destRoom) return
-
-    // Remove slot from source
-    const [movedSlot] = sourceRoom.slots.splice(source.index, 1)
-
-    // Calculate new orderIndex (midpoint math)
-    let newOrderIndex = 0
-    if (destRoom.slots.length === 0) {
-      newOrderIndex = 1 // First item in empty room
-    } else if (destination.index === 0) {
-      newOrderIndex = destRoom.slots[0].orderIndex - 1 // Dropped at the top
-    } else if (destination.index >= destRoom.slots.length) {
-      newOrderIndex = destRoom.slots[destRoom.slots.length - 1].orderIndex + 1 // Dropped at the bottom
-    } else {
-      // Dropped in the middle
-      const prevOrder = destRoom.slots[destination.index - 1].orderIndex
-      const nextOrder = destRoom.slots[destination.index].orderIndex
-      newOrderIndex = (prevOrder + nextOrder) / 2
-    }
-
-    // Update slot data
-    movedSlot.orderIndex = newOrderIndex
-    movedSlot.roomId = destRoom.id
-
-    // Add to destination
-    destRoom.slots.splice(destination.index, 0, movedSlot)
-
-    // NOTE: highlightSlot(draggableId) has been REMOVED from here.
-
-    // Optimistically update UI
-    setJunkets(newJunkets)
-
-    // Persist to backend
-    try {
-      await fetch(`${API_URL}/slots/${draggableId}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          // Pass the socket ID so the server knows to ignore us!
-          'x-socket-id': socketRef.current?.id || '',
-        },
-        body: JSON.stringify({ orderIndex: newOrderIndex, roomId: destRoom.id }),
-      })
-    } catch (error) {
-      console.error('Failed to update slot order:', error)
-      fetchJunkets() // Revert on failure
-    }
+  const handleDragEnd = (result: DropResult) => {
+    if (!result.destination) return
+    const items = Array.from(interviews)
+    const [reorderedItem] = items.splice(result.source.index, 1)
+    items.splice(result.destination.index, 0, reorderedItem)
+    setInterviews(items)
   }
 
-  const selectedJunket = junkets.find((j) => j.id === selectedJunketId)
-  const days = selectedJunket?.days || []
-
   return (
-    <Container maxWidth='xl' sx={{ height: '100vh', display: 'flex', flexDirection: 'column', py: 4 }}>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-        <Typography variant='h4' component='h1' fontWeight='bold'>
-          Junket Board
-        </Typography>
-        <FormControl sx={{ minWidth: 250 }}>
-          <InputLabel>Select Junket</InputLabel>
-          <Select
-            value={selectedJunketId}
-            label='Select Junket'
-            onChange={(e) => {
-              setSelectedJunketId(e.target.value)
-              setActiveTabIndex(0)
-            }}
-          >
-            {junkets.map((junket) => (
-              <MenuItem key={junket.id} value={junket.id}>
-                {junket.name}
-              </MenuItem>
-            ))}
-          </Select>
-        </FormControl>
-      </Box>
-
-      {selectedJunket && days.length > 0 ? (
-        <JunketComponent
-          junket={selectedJunket}
-          days={days}
-          highlightedSlots={highlightedSlots}
-          activeTabIndex={activeTabIndex}
-          handleTabChange={(_, val) => setActiveTabIndex(val)}
-          handleDragEnd={handleDragEnd}
-        />
-      ) : (
-        <Typography color='text.secondary'>No data available.</Typography>
-      )}
-    </Container>
+    <Box sx={{ width: '750px' }}>
+      <DragDropContext onDragEnd={handleDragEnd}>
+        <Droppable droppableId='interviews-list'>
+          {(provided) => (
+            <Box {...provided.droppableProps} ref={provided.innerRef}>
+              {/* Note: Map over the new dynamically calculated array here! */}
+              {interviewsWithTimes.map((item, index) => (
+                <Draggable key={item.id} draggableId={item.id} index={index}>
+                  {(provided) => <InterviewCard item={item} order={index + 1} provided={provided} />}
+                </Draggable>
+              ))}
+              {provided.placeholder}
+            </Box>
+          )}
+        </Droppable>
+      </DragDropContext>
+    </Box>
   )
 }

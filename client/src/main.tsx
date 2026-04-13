@@ -1,14 +1,18 @@
 import { createTheme, ThemeProvider } from '@mui/material'
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
+import App from './App.tsx'
 import './index.css'
-import App from './UI.tsx'
 
 const theme = createTheme({
   // palette: {
   //   mode: 'dark',
   // },
   typography: {
+    h3: {
+      fontSize: '1.4rem',
+      fontWeight: 'bold',
+    },
     h4: {
       fontSize: '1rem',
       fontWeight: 'bold',
