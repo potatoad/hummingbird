@@ -1,35 +1,35 @@
-import React from 'react';
-import { DragDropContext, type DropResult } from '@hello-pangea/dnd';
-import { Tabs, Tab, Box } from '@mui/material';
-import DayComponent from '../day/Day';
+import { DragDropContext, type DropResult } from '@hello-pangea/dnd'
+import { Box, Tab, Tabs } from '@mui/material'
+import React from 'react'
+import DayComponent from '../day/Day'
 
-type Slot = { id: string; title: string; duration: number; orderIndex: number; roomId: string };
-type Room = { id: string; name: string; slots: Slot[] };
-type Day = { id: string; date: string; rooms: Room[] };
-type Junket = { id: string; name: string; days: Day[] };
+type Slot = { id: string; title: string; duration: number; orderIndex: number; roomId: string }
+type Room = { id: string; name: string; slots: Slot[] }
+type Day = { id: string; date: string; rooms: Room[] }
+type Junket = { id: string; name: string; days: Day[] }
 
 interface TabPanelProps {
-  children?: React.ReactNode;
-  index: number;
-  value: number;
+  children?: React.ReactNode
+  index: number
+  value: number
 }
 
 function CustomTabPanel(props: TabPanelProps) {
-  const { children, value, index, ...other } = props;
+  const { children, value, index, ...other } = props
   return (
-    <div role="tabpanel" hidden={value !== index} style={{ height: '100%' }} {...other}>
+    <div role='tabpanel' hidden={value !== index} style={{ height: '100%' }} {...other}>
       {value === index && <Box sx={{ pt: 3, height: '100%' }}>{children}</Box>}
     </div>
-  );
+  )
 }
 
 interface JunketProps {
-  junket: Junket;
-  days: Day[];
-  highlightedSlots: string[];
-  activeTabIndex: number;
-  handleTabChange: (event: React.SyntheticEvent, newValue: number) => void;
-  handleDragEnd: (result: DropResult) => void;
+  junket: Junket
+  days: Day[]
+  highlightedSlots: string[]
+  activeTabIndex: number
+  handleTabChange: (event: React.SyntheticEvent, newValue: number) => void
+  handleDragEnd: (result: DropResult) => void
 }
 
 const JunketComponent: React.FC<JunketProps> = ({
@@ -42,7 +42,7 @@ const JunketComponent: React.FC<JunketProps> = ({
 }) => {
   return (
     <Box sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-      <Tabs value={activeTabIndex} onChange={handleTabChange} variant="scrollable">
+      <Tabs value={activeTabIndex} onChange={handleTabChange} variant='scrollable'>
         {days.map((day) => (
           <Tab key={day.id} label={new Date(day.date).toLocaleDateString()} />
         ))}
@@ -56,7 +56,7 @@ const JunketComponent: React.FC<JunketProps> = ({
         ))}
       </DragDropContext>
     </Box>
-  );
-};
+  )
+}
 
-export default JunketComponent;
+export default JunketComponent

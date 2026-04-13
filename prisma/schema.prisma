@@ -1,6 +1,5 @@
 generator client {
-  provider = "prisma-client"
-  output   = "../generated/prisma"
+  provider = "prisma-client-js"
 }
 
 datasource db {
@@ -65,7 +64,7 @@ model Slot {
   plannedEndTime   DateTime?  @db.Timestamptz(6)
   actualStartTime  DateTime?  @db.Timestamptz(6)
   actualEndTime    DateTime?  @db.Timestamptz(6)
-  orderIndex       Float
+  orderIndex       Float      @default(0)
   roomId           String
   room             Room      @relation(fields: [roomId], references: [id], onDelete: Cascade)
 }

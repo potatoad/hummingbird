@@ -1,12 +1,12 @@
 import 'dotenv/config'
 
 import { PrismaPg } from '@prisma/adapter-pg'
+import { PrismaClient } from '@prisma/client'
 import cors from 'cors'
 import type { Request, Response } from 'express'
 import express from 'express'
 import { createServer } from 'http'
 import { Server } from 'socket.io'
-import { PrismaClient } from '../generated/prisma/client'
 
 const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL })
 const prisma = new PrismaClient({ adapter })
@@ -45,7 +45,7 @@ app.post('/junkets', async (req: Request, res: Response) => {
 })
 
 // Query all Junkets (with related Days, Rooms, and Slots)
-app.get('/junkets', async (req: Request, res: Response) => {
+app.get('/junkets', async (req, res) => {
   try {
     const junkets = await prisma.junket.findMany({
       include: {
@@ -53,7 +53,9 @@ app.get('/junkets', async (req: Request, res: Response) => {
           include: {
             rooms: {
               include: {
-                slots: true,
+                slots: {
+                  orderBy: { orderIndex: 'asc' }, // <--- ADD THIS LINE
+                },
               },
             },
           },
@@ -62,7 +64,7 @@ app.get('/junkets', async (req: Request, res: Response) => {
     })
     res.json(junkets)
   } catch (error) {
-    res.status(500).json({ error: 'Failed to fetch junkets', details: error })
+    res.status(500).json({ error: 'Failed to fetch' })
   }
 })
 
@@ -261,33 +263,28 @@ app.get('/slots', async (req: Request, res: Response) => {
 })
 
 // Update a Slot (used for drag and drop reordering)
-app.patch('/slots/:id', async (req, res) => {
-  const { id } = req.params
-  const { orderIndex, roomId, status, isVirtual } = req.body
-
-  // The frontend will send its socket ID in the headers
-  const senderSocketId = req.headers['x-socket-id'] as string
-
+app.patch('/slots/:id', async (req: Request, res: Response) => {
   try {
-    // 1. Update the database using Prisma
+    const { id } = req.params
+    const { orderIndex, roomId, title, description, duration, isVirtual, isNote } = req.body
+
     const updatedSlot = await prisma.slot.update({
       where: { id },
-      data: { orderIndex, roomId, status, isVirtual },
+      data: {
+        ...(orderIndex !== undefined && { orderIndex }),
+        ...(roomId !== undefined && { roomId }),
+        ...(title !== undefined && { title }),
+        ...(description !== undefined && { description }),
+        ...(duration !== undefined && { duration }),
+        ...(isVirtual !== undefined && { isVirtual }),
+        ...(isNote !== undefined && { isNote }),
+      },
     })
 
-    // 2. Broadcast the update to everyone EXCEPT the person who made the change
-    if (senderSocketId) {
-      // If we know who sent it, skip them
-      io.except(senderSocketId).emit('board-updated', { slotId: id })
-    } else {
-      // Fallback: send to everyone
-      io.emit('board-updated', { slotId: id })
-    }
-
+    io.emit('board-updated', { slotId: updatedSlot.id })
     res.json(updatedSlot)
   } catch (error) {
-    console.error('Error updating slot:', error)
-    res.status(500).json({ error: 'Failed to update slot' })
+    res.status(400).json({ error: 'Failed to update slot', details: error })
   }
 })
 

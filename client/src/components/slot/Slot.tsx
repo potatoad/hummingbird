@@ -1,245 +1,170 @@
 import { Draggable } from '@hello-pangea/dnd'
-import EditIcon from '@mui/icons-material/Edit'
-import {
-  Box,
-  Button,
-  Dialog,
-  DialogContent,
-  DialogTitle,
-  Grid,
-  IconButton,
-  ListItem,
-  TextField,
-  Typography,
-} from '@mui/material'
+import { DragHandle, EditSquare } from '@mui/icons-material'
+import { Box, Grid, IconButton, Paper, Typography } from '@mui/material'
+import React, { useState } from 'react'
+import { contrastingColor, contrastingColorBlendMode } from '../../contrastingColor'
+import type { Slot } from '../../types'
+import { getStatusColor } from '../../utils/statusColors'
+import EditSlotModal from '../EditSlotModal' // <-- Make sure this path is correct for your app!
 
-import React from 'react'
-
-type Slot = {
-  id: string
-  title: string
-  colour: string
-  duration: number
-  orderIndex: number
-  roomId: string
-  isVirtual?: boolean
-  isNote?: boolean
-  slotType?: string
-  description?: string
-  status?: string
-}
+// Extend Slot specifically for the UI to accept the calculated time from Room
+type SlotWithTime = Slot & { calculatedStartTime?: string }
 
 interface SlotProps {
-  slot: Slot
+  slot: SlotWithTime
   index: number
   isHighlighted: boolean
+  onBoardNeedsRefresh?: () => void // <-- Added this prop
 }
 
-const handleUpdateSlot = async (slot: Slot) => {
-  try {
-    const response = await fetch('http://localhost:3000/slots/' + slot.id, {
-      method: 'PATCH',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(slot),
-    })
+const SlotComponent: React.FC<SlotProps> = ({ slot, index, isHighlighted, onBoardNeedsRefresh }) => {
+  const isCancelled = slot.status === 'CANCELLED'
+  const isBreak = slot.slotType === 'BREAK' || slot.slotType === 'BUFFER'
 
-    if (!response.ok) {
-      throw new Error('Failed to create slot')
-    }
-  } catch (error) {
-    console.error('Error updating slot:', error)
-    // Optionally, show an error message to the user
-  }
-}
+  // Use the slot's DB colour, or fallback to the status color map
+  const colour = getStatusColor(isBreak, slot.status)
 
-const SlotComponent: React.FC<SlotProps> = ({ slot, index, isHighlighted }) => {
-  const [open, setOpen] = React.useState(false)
-  const handleOpen = () => setOpen(true)
-  const handleClose = () => setOpen(false)
+  // Removed the incorrect `: boolean` type annotation here
+  const [isModalOpen, setIsModalOpen] = useState(false)
 
-  const [duration, setDuration] = React.useState(slot.duration)
+  // Added type `any` (or Partial<Slot>) to avoid TS errors
+  const handleSave = async (updatedFields: any) => {
+    try {
+      const response = await fetch(`/slots/${slot.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updatedFields),
+      })
 
-  const slotInterview = (slot: Slot) => {
-    return (
-      <Box sx={{ backgroundColor: slot.isVirtual ? '#fff2cc' : slot.colour }}>
-        <Grid container spacing={2} sx={{ pr: 2, pl: 2 }}>
-          <Grid size={10}>
-            <Typography variant='subtitle1' sx={{ fontWeight: 'bold' }}>
-              {slot.title}
-            </Typography>
-          </Grid>
-          <Grid size={2}>
-            <Typography variant='body2' color='text.secondary'>
-              {slot.duration / 60} mins
-            </Typography>
-          </Grid>
-        </Grid>
-
-        {/* <FormControl>
-        <InputLabel>Virtual</InputLabel>
-        <Checkbox
-          checked={slot.isVirtual}
-          onChange={(e) => {
-            handleUpdateSlot({ ...slot, isVirtual: e.target.checked })
-            console.log(slot)
-            console.log(e.target.checked)
-          }}
-        />
-      </FormControl>
-      <FormControl>
-        <InputLabel>Status</InputLabel>
-        <Select
-          labelId='status-select-label'
-          id='status-select'
-          value={slot.status}
-          label='Status'
-          onChange={(e) => {
-            handleUpdateSlot({ ...slot, status: e.target.value })
-          }}
-        >
-          <MenuItem value='BLANK'>
-            <em>none</em>
-          </MenuItem>
-          <MenuItem value='ARRIVED'>Checked-in</MenuItem>
-          <MenuItem value='IN_PROGRESS'>On deck</MenuItem>
-          <MenuItem value='INTERVIEW'>In interview</MenuItem>
-          <MenuItem value='COMPLETED'>Completed</MenuItem>
-          <MenuItem value='CANCELLED'>Cancelled</MenuItem>
-        </Select>
-      </FormControl> */}
-      </Box>
-    )
-  }
-
-  const slotTalent = (slot: Slot) => {
-    return (
-      <Box sx={{ backgroundColor: slot.isVirtual ? '#fff2cc' : slot.colour }}>
-        <Typography variant='h5' sx={{ fontWeight: 'bold', textAlign: 'center' }}>
-          {slot.title}
-        </Typography>
-      </Box>
-    )
-  }
-
-  const slotNote = (slot: Slot) => {
-    return (
-      <Box sx={{ backgroundColor: slot.colour }}>
-        <Typography variant='h5' sx={{ fontWeight: 'bold', textAlign: 'center' }}>
-          {slot.title}
-        </Typography>
-      </Box>
-    )
-  }
-
-  const slotBuffer = (slot: Slot) => {
-    return (
-      <Box sx={{ backgroundColor: slot.colour }}>
-        <Typography variant='h5' sx={{ fontWeight: 'bold', textAlign: 'center' }}>
-          {slot.title}
-        </Typography>
-      </Box>
-    )
-  }
-
-  const slotBreak = (slot: Slot) => {
-    return (
-      <Box sx={{ backgroundColor: 'lightGrey' }}>
-        <Typography variant='h6' sx={{ fontWeight: 'bold', textAlign: 'center' }}>
-          {slot.title} - {slot.duration / 60} mins
-        </Typography>
-      </Box>
-    )
-  }
-
-  const slotBox = (slot: Slot) => {
-    switch (slot.slotType) {
-      case 'INTERVIEW':
-        return slotInterview(slot)
-      case 'TALENT':
-        return slotTalent(slot)
-      case 'NOTE':
-        return slotNote(slot)
-      case 'BUFFER':
-        return slotBuffer(slot)
-      case 'BREAK':
-        return slotBreak(slot)
-      default:
-        return null
+      if (response.ok) {
+        setIsModalOpen(false)
+        if (onBoardNeedsRefresh) onBoardNeedsRefresh()
+      }
+    } catch (error) {
+      console.error('Failed to update slot:', error)
     }
   }
 
+  // Wrap the entire return in a Fragment so <Draggable> doesn't get confused by the Modal
   return (
     <>
-      <Draggable key={slot.id} draggableId={slot.id} index={index}>
-        {(provided, snapshot) => (
-          <ListItem
+      <Draggable draggableId={slot.id} index={index}>
+        {(provided) => (
+          <Paper
+            elevation={isHighlighted ? 6 : 2}
             ref={provided.innerRef}
             {...provided.draggableProps}
-            {...provided.dragHandleProps}
-            disablePadding
-            sx={{ mb: '2px', ...provided.draggableProps.style }}
+            sx={{
+              m: 1,
+              textAlign: 'left',
+              width: '100%',
+              backgroundColor: slot.isVirtual ? '#fff2cc' : isBreak ? '#dadada' : undefined,
+              overflow: 'hidden',
+              boxShadow: isHighlighted ? `0 0 10px 2px ${colour}` : undefined,
+              transition: 'box-shadow 0.3s ease-in-out',
+            }}
           >
-            <Box
-              className={`${isHighlighted ? 'item-dropped-glow' : ''}`}
-              sx={{
-                width: '100%',
-                boxShadow: snapshot.isDragging ? 2 : 0,
-              }}
-            >
-              <Box>{slotBox(slot)}</Box>
-              <Box
-                sx={{
-                  position: 'absolute',
-                  top: 0,
-                  right: 0,
-                  display: 'flex',
-                  justifyContent: 'center',
-                  alignItems: 'center',
-                }}
-              >
-                <IconButton size='small' onClick={handleOpen}>
-                  <EditIcon fontSize='small' />
+            <Grid container>
+              {/* Left Content Area */}
+              <Grid size={9} container sx={{ p: 1 }}>
+                {isBreak ? (
+                  <Box sx={{ alignContent: 'center', textAlign: 'center', width: '100%' }}>
+                    <Typography variant='h5'>{slot.title}</Typography>
+                  </Box>
+                ) : (
+                  <>
+                    <Grid size={4}>
+                      <Typography variant='subtitle2'>Journalist</Typography>
+                      <Typography variant='h4' sx={{ textDecoration: isCancelled ? 'line-through' : 'none' }}>
+                        {slot.title || ''}
+                      </Typography>
+                    </Grid>
+                    <Grid size={8}>
+                      <Typography variant='subtitle2'>Outlet</Typography>
+                      <Typography variant='h5' sx={{ textDecoration: isCancelled ? 'line-through' : 'none' }}>
+                        {slot.description || ''}
+                      </Typography>
+                    </Grid>
+                    <Grid size={1}>
+                      <Typography variant='subtitle2'>Order</Typography>
+                      <Typography variant='h6'>{index}</Typography>
+                    </Grid>
+                    <Grid size={3}>
+                      <Typography variant='subtitle2'>Territory</Typography>
+                      <Typography variant='h6'>{slot.territory || ''}</Typography>
+                    </Grid>
+                    <Grid size={7}>
+                      <Typography variant='subtitle2'>Notes</Typography>
+                      <Typography variant='h6'>{slot.notes || ''}</Typography>
+                    </Grid>
+                  </>
+                )}
+              </Grid>
+
+              {/* Right Status Area */}
+              <Grid size={3} container sx={{ background: colour, p: 1, position: 'relative' }}>
+                {/* Hooked up the onClick handler to open the modal */}
+                <IconButton
+                  aria-label='edit slot'
+                  onClick={() => setIsModalOpen(true)}
+                  sx={{
+                    p: 0,
+                    position: 'absolute',
+                    top: '5px',
+                    right: '5px',
+                    color: contrastingColor(colour),
+                    mixBlendMode: contrastingColorBlendMode ? contrastingColorBlendMode(colour) : 'overlay',
+                  }}
+                >
+                  <EditSquare fontSize='small' />
                 </IconButton>
-              </Box>
-            </Box>
-          </ListItem>
+
+                <IconButton
+                  aria-label='drag slot'
+                  {...provided.dragHandleProps}
+                  sx={{
+                    p: 0,
+                    position: 'absolute',
+                    bottom: 0,
+                    right: '5px',
+                    color: contrastingColor(colour),
+                    mixBlendMode: contrastingColorBlendMode ? contrastingColorBlendMode(colour) : 'overlay',
+                    cursor: 'grab',
+                  }}
+                >
+                  <DragHandle fontSize='small' />
+                </IconButton>
+
+                <Grid size={12} sx={{ pr: '1em' }}>
+                  <>
+                    {!isBreak && (
+                      <Typography variant='h6' sx={{ mb: 1 }}>
+                        {slot.status || '\u00A0'}
+                      </Typography>
+                    )}
+                    <Grid container>
+                      <Grid size={6}>
+                        <Typography variant='subtitle2'>Start time</Typography>
+                        <Typography variant='h5'>{slot.calculatedStartTime || '00:00'}</Typography>
+                      </Grid>
+                      <Grid size={6}>
+                        <Typography variant='subtitle2'>Duration</Typography>
+                        <Typography variant='h5' sx={{ textDecoration: isCancelled ? 'line-through' : 'none' }}>
+                          {Number.parseInt(slot.duration as number) / 60}{' '}
+                          {(slot.duration as number) / 60 > 1 ? 'mins' : 'min'}
+                        </Typography>
+                      </Grid>
+                    </Grid>
+                  </>
+                </Grid>
+              </Grid>
+            </Grid>
+          </Paper>
         )}
       </Draggable>
-      <Dialog
-        open={open}
-        onClose={() => {
-          setOpen(false)
-          handleClose()
-        }}
-      >
-        <DialogTitle>Edit Slot</DialogTitle>
-        <DialogContent>
-          <Box sx={{ pt: 1 }}>
-            <TextField
-              label='Title'
-              value={slot.title}
-              onChange={(e) => {
-                handleUpdateSlot({ ...slot, title: e.target.value })
-              }}
-            />
-            Colour: {slot.colour}
-            <br />
-            Duration: {slot.duration}
-            <br />
-            Order Index: {slot.orderIndex}
-            <br />
-            Room ID: {slot.roomId}
-            <br />
-            Is Virtual: {slot.isVirtual ? 'Yes' : 'No'}
-            <br />
-            Is Note: {slot.isNote ? 'Yes' : 'No'}
-            <br />
-            <Button onClick={handleClose}>Close</Button>
-          </Box>
-        </DialogContent>
-      </Dialog>
+
+      {/* Render the modal locally, but controlled by state. Keep it OUTSIDE the Draggable! */}
+      <EditSlotModal open={isModalOpen} slot={slot} onClose={() => setIsModalOpen(false)} onSave={handleSave} />
     </>
   )
 }
