@@ -1,15 +1,14 @@
 :root {
-  --text: #6b6375;
+  --text: #121212;
   --text-h: #08060d;
-  --bg: #fff;
+  --bg: #eee;
   --border: #e5e4e7;
   --code-bg: #f4f3ec;
   --accent: #aa3bff;
   --accent-bg: rgba(170, 59, 255, 0.1);
   --accent-border: rgba(170, 59, 255, 0.5);
   --social-bg: rgba(244, 243, 236, 0.5);
-  --shadow:
-    rgba(0, 0, 0, 0.1) 0 10px 15px -3px, rgba(0, 0, 0, 0.05) 0 4px 6px -2px;
+  --shadow: rgba(0, 0, 0, 0.1) 0 10px 15px -3px, rgba(0, 0, 0, 0.05) 0 4px 6px -2px;
 
   --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
   --heading: system-ui, 'Segoe UI', Roboto, sans-serif;
@@ -30,7 +29,7 @@
   }
 }
 
-@media (prefers-color-scheme: dark) {
+/* @media (prefers-color-scheme: dark) {
   :root {
     --text: #9ca3af;
     --text-h: #f3f4f6;
@@ -48,64 +47,54 @@
   #social .button-icon {
     filter: invert(1) brightness(2);
   }
-}
+} */
 
 #root {
-  width: 1126px;
+  width: 100vw;
   max-width: 100%;
   margin: 0 auto;
-  text-align: center;
-  border-inline: 1px solid var(--border);
+  /* text-align: center; */
   min-height: 100svh;
   display: flex;
   flex-direction: column;
   box-sizing: border-box;
 }
 
-body {
-  margin: 0;
-}
-
-h1,
-h2 {
-  font-family: var(--heading);
-  font-weight: 500;
-  color: var(--text-h);
-}
-
-h1 {
-  font-size: 56px;
-  letter-spacing: -1.68px;
-  margin: 32px 0;
-  @media (max-width: 1024px) {
-    font-size: 36px;
-    margin: 20px 0;
+@keyframes glowAndFade {
+  0% {
+    /* Fade out completely */
+    box-shadow: 0 0 0px rgba(3, 169, 244, 0);
+    transform: scale(1); /* Return to normal size */
+  }
+  15% {
+    /* Fade out completely */
+    box-shadow: 0 0 0px rgba(3, 169, 244, 0);
+    transform: scale(1); /* Return to normal size */
+  }
+  17% {
+    /* Initial bright glow */
+    box-shadow:
+      0 0 1cap rgba(3, 169, 244, 0.8),
+      /* inner cyan */ 0 0 2px rgba(3, 169, 244, 0.6),
+      0 0 3px rgba(3, 169, 244, 0.4); /* outer halo */
+    transform: scale(1.02); /* Slight scale up for emphasis */
+  }
+  50% {
+    /* Hold the peak glow for a moment */
+    box-shadow:
+      0 0 2cap rgba(3, 169, 244, 0.7),
+      0 0 4px rgba(3, 169, 244, 0.5),
+      0 0 6px rgba(3, 169, 244, 0.3);
+  }
+  100% {
+    /* Fade out completely */
+    box-shadow: 0 0 0px rgba(3, 169, 244, 0);
+    transform: scale(1); /* Return to normal size */
   }
 }
-h2 {
-  font-size: 24px;
-  line-height: 118%;
-  letter-spacing: -0.24px;
-  margin: 0 0 8px;
-  @media (max-width: 1024px) {
-    font-size: 20px;
-  }
-}
-p {
-  margin: 0;
-}
 
-code,
-.counter {
-  font-family: var(--mono);
-  display: inline-flex;
-  border-radius: 4px;
-  color: var(--text-h);
-}
-
-code {
-  font-size: 15px;
-  line-height: 135%;
-  padding: 4px 8px;
-  background: var(--code-bg);
+/* The class we will apply to the dropped item */
+.item-dropped-glow {
+  /* Apply the animation: 1.5 seconds, ease-out, forward fill */
+  animation: glowAndFade 1.5s ease-out forwards;
 }

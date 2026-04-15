@@ -1,204 +1,186 @@
-import React, { useState, useEffect } from 'react';
+import { type DropResult } from '@hello-pangea/dnd'
+import { Box, FormControl, InputLabel, MenuItem, Select, Stack, Typography } from '@mui/material'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { io, Socket } from 'socket.io-client'
+import JunketComponent from './components/junket/Junket'
+import { type Junket } from './utils/types'
 
-const API_URL = '';
+const API_URL = '' // using Vite proxy
 
-function App() {
-  const [junkets, setJunkets] = useState([]);
-  
-  // Form States
-  const [junketName, setJunketName] = useState('');
-  
-  const [dayDate, setDayDate] = useState('');
-  const [selectedJunketId, setSelectedJunketId] = useState('');
-  
-  const [roomName, setRoomName] = useState('');
-  const [selectedDayId, setSelectedDayId] = useState('');
-  
-  const [slotTitle, setSlotTitle] = useState('');
-  const [slotDuration, setSlotDuration] = useState('');
-  const [slotOrder, setSlotOrder] = useState('');
-  const [selectedRoomId, setSelectedRoomId] = useState('');
+export default function App() {
+  const [junkets, setJunkets] = useState<Junket[]>([])
+  const [selectedJunketId, setSelectedJunketId] = useState<string>('')
+  const [activeTabIndex, setActiveTabIndex] = useState(0)
+  const [highlightedSlots, setHighlightedSlots] = useState<string[]>([])
+  const [error, setError] = useState<string | null>(null)
 
-  // Fetch all junkets (with nested days, rooms, slots based on our Express route)
-  const fetchJunkets = async () => {
+  const socketRef = useRef<Socket | null>(null)
+
+  const fetchJunkets = useCallback(async () => {
     try {
-      const res = await fetch(`${API_URL}/junkets`);
-      const data = await res.json();
-      setJunkets(data);
+      const res = await fetch(`${API_URL}/junkets`)
+      if (!res.ok) {
+        throw new Error(`HTTP ${res.status}: ${res.statusText}`)
+      }
+      const data: Junket[] = await res.json()
+      setJunkets(data)
+      setError(null)
+      if (data.length > 0 && !selectedJunketId) {
+        setSelectedJunketId(data[0].id)
+      }
     } catch (error) {
-      console.error('Failed to fetch junkets:', error);
+      console.error('Failed to fetch junkets:', error)
+      setError(error instanceof Error ? error.message : 'Unknown error')
+      setJunkets([])
     }
-  };
+  }, [selectedJunketId])
+
+  const highlightSlot = useCallback((id: string) => {
+    setHighlightedSlots((prev) => [...prev, id])
+
+    setTimeout(() => {
+      setHighlightedSlots((prev) => prev.filter((slotId) => slotId !== id))
+    }, 1500)
+  }, [])
 
   useEffect(() => {
-    fetchJunkets();
-  }, []);
+    const initFetch = async () => {
+      await fetchJunkets()
+    }
+    initFetch()
 
-  // ---------------- Handlers ----------------
+    socketRef.current = io()
 
-  const handleCreateJunket = async (e) => {
-    e.preventDefault();
-    await fetch(`${API_URL}/junkets`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name: junketName })
-    });
-    setJunketName('');
-    fetchJunkets();
-  };
+    socketRef.current.on('board-updated', (data) => {
+      fetchJunkets()
+      if (data && data.slotId) {
+        highlightSlot(data.slotId)
+      }
+    })
 
-  const handleCreateDay = async (e) => {
-    e.preventDefault();
-    await fetch(`${API_URL}/days`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ date: dayDate, junketId: selectedJunketId })
-    });
-    setDayDate('');
-    fetchJunkets();
-  };
+    return () => {
+      socketRef.current?.off('board-updated')
+      socketRef.current?.disconnect()
+    }
+  }, [highlightSlot, fetchJunkets])
 
-  const handleCreateRoom = async (e) => {
-    e.preventDefault();
-    await fetch(`${API_URL}/rooms`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name: roomName, dayId: selectedDayId })
-    });
-    setRoomName('');
-    fetchJunkets();
-  };
+  const handleDragEnd = async (result: DropResult) => {
+    const { destination, source, draggableId } = result
 
-  const handleCreateSlot = async (e) => {
-    e.preventDefault();
-    await fetch(`${API_URL}/slots`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ 
-        title: slotTitle, 
-        duration: parseInt(slotDuration), 
-        orderIndex: parseFloat(slotOrder), 
-        roomId: selectedRoomId 
+    if (!destination) return
+    if (destination.droppableId === source.droppableId && destination.index === source.index) return
+
+    const newJunkets = JSON.parse(JSON.stringify(junkets)) as Junket[]
+    const currentJunket = newJunkets.find((j) => j.id === selectedJunketId)
+    if (!currentJunket) return
+
+    const currentDay = currentJunket.days[activeTabIndex]
+    const sourceRoom = currentDay.rooms.find((r) => r.id === source.droppableId)
+    const destRoom = currentDay.rooms.find((r) => r.id === destination.droppableId)
+
+    if (!sourceRoom || !destRoom) return
+
+    const [movedSlot] = sourceRoom.slots.splice(source.index, 1)
+
+    let newOrderIndex = 0
+    if (destRoom.slots.length === 0) {
+      newOrderIndex = 1
+    } else if (destination.index === 0) {
+      newOrderIndex = destRoom.slots[0].orderIndex - 1
+    } else if (destination.index >= destRoom.slots.length) {
+      newOrderIndex = destRoom.slots[destRoom.slots.length - 1].orderIndex + 1
+    } else {
+      const prevOrder = destRoom.slots[destination.index - 1].orderIndex
+      const nextOrder = destRoom.slots[destination.index].orderIndex
+      newOrderIndex = (prevOrder + nextOrder) / 2
+    }
+
+    movedSlot.orderIndex = newOrderIndex
+    movedSlot.roomId = destRoom.id
+
+    destRoom.slots.splice(destination.index, 0, movedSlot)
+    setJunkets(newJunkets)
+
+    try {
+      await fetch(`${API_URL}/slots/${draggableId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-socket-id': socketRef.current?.id || '',
+        },
+        body: JSON.stringify({ orderIndex: newOrderIndex, roomId: destRoom.id }),
       })
-    });
-    setSlotTitle('');
-    setSlotDuration('');
-    setSlotOrder('');
-    fetchJunkets();
-  };
+    } catch (error) {
+      console.error('Failed to update slot order:', error)
+      fetchJunkets()
+    }
+  }
 
-  const handleDeleteJunket = async (id) => {
-    await fetch(`${API_URL}/junkets/${id}`, { method: 'DELETE' });
-    fetchJunkets();
-  };
-
-  // ---------------- Render Helpers to extract flat lists for dropdowns ----------------
-  const allDays = junkets.flatMap(j => j.days || []);
-  const allRooms = allDays.flatMap(d => d.rooms || []);
+  const selectedJunket = junkets.find((j) => j.id === selectedJunketId)
+  const days = selectedJunket?.days || []
 
   return (
-    <div style={{ padding: '20px', fontFamily: 'sans-serif', maxWidth: '800px', margin: '0 auto' }}>
-      <h1>Junket Management</h1>
-
-      {/* --- FORMS --- */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '40px' }}>
-        
-        {/* Junket Form */}
-        <form onSubmit={handleCreateJunket} style={formStyle}>
-          <h3>Create Junket</h3>
-          <input required placeholder="Junket Name" value={junketName} onChange={e => setJunketName(e.target.value)} />
-          <button type="submit">Add Junket</button>
-        </form>
-
-        {/* Day Form */}
-        <form onSubmit={handleCreateDay} style={formStyle}>
-          <h3>Create Day</h3>
-          <select required value={selectedJunketId} onChange={e => setSelectedJunketId(e.target.value)}>
-            <option value="">Select a Junket...</option>
-            {junkets.map(j => <option key={j.id} value={j.id}>{j.name}</option>)}
-          </select>
-          <input required type="date" value={dayDate} onChange={e => setDayDate(e.target.value)} />
-          <button type="submit">Add Day</button>
-        </form>
-
-        {/* Room Form */}
-        <form onSubmit={handleCreateRoom} style={formStyle}>
-          <h3>Create Room</h3>
-          <select required value={selectedDayId} onChange={e => setSelectedDayId(e.target.value)}>
-            <option value="">Select a Day...</option>
-            {allDays.map(d => <option key={d.id} value={d.id}>{new Date(d.date).toLocaleDateString()}</option>)}
-          </select>
-          <input required placeholder="Room Name" value={roomName} onChange={e => setRoomName(e.target.value)} />
-          <button type="submit">Add Room</button>
-        </form>
-
-        {/* Slot Form */}
-        <form onSubmit={handleCreateSlot} style={formStyle}>
-          <h3>Create Slot</h3>
-          <select required value={selectedRoomId} onChange={e => setSelectedRoomId(e.target.value)}>
-            <option value="">Select a Room...</option>
-            {allRooms.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
-          </select>
-          <input required placeholder="Slot Title" value={slotTitle} onChange={e => setSlotTitle(e.target.value)} />
-          <input required type="number" placeholder="Duration (sec)" value={slotDuration} onChange={e => setSlotDuration(e.target.value)} />
-          <input required type="number" step="0.1" placeholder="Order Index" value={slotOrder} onChange={e => setSlotOrder(e.target.value)} />
-          <button type="submit">Add Slot</button>
-        </form>
-      </div>
-
-      {/* --- DATA DISPLAY --- */}
-      <h2>Current Data</h2>
-      {junkets.length === 0 && <p>No junkets found. Create one above!</p>}
-      
-      {junkets.map(junket => (
-        <div key={junket.id} style={cardStyle}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <h2 style={{ margin: 0 }}>{junket.name}</h2>
-            <button onClick={() => handleDeleteJunket(junket.id)} style={{ backgroundColor: '#ff4d4d', color: 'white', border: 'none', padding: '5px 10px', cursor: 'pointer' }}>Delete</button>
-          </div>
-          
-          {junket.days?.map(day => (
-            <div key={day.id} style={{ marginLeft: '20px', marginTop: '10px', paddingLeft: '10px', borderLeft: '2px solid #ccc' }}>
-              <strong>Day:</strong> {new Date(day.date).toLocaleDateString()}
-              
-              {day.rooms?.map(room => (
-                <div key={room.id} style={{ marginLeft: '20px', marginTop: '5px' }}>
-                  <strong>Room:</strong> {room.name}
-                  
-                  <ul style={{ margin: '5px 0' }}>
-                    {room.slots?.map(slot => (
-                      <li key={slot.id}>
-                        {slot.title} ({slot.duration}s) - Order: {slot.orderIndex}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
+    <Box sx={{ p: 2 }}>
+      <Stack direction={'row'} sx={{ justifyContent: 'space-between', alignItems: 'center' }}>
+        <Stack direction={'row'} spacing={1} sx={{ alignItems: 'center', position: 'relative' }}>
+          <img
+            src='/favicon/favicon.svg'
+            width={'60px'}
+            height={'60px'}
+            style={{ position: 'absolute', top: '-23px', left: '-8px' }}
+            alt='Hummingbird Logo'
+          />
+          <Typography variant='h1' component='h1' fontWeight='bold' sx={{ pl: '30px' }}>
+            Hummingbird
+          </Typography>
+        </Stack>
+        <Stack
+          direction={'row'}
+          spacing={2}
+          sx={{
+            justifyContent: 'flex-end',
+            alignItems: 'stretch',
+          }}
+        >
+          {error && (
+            <Typography variant='body1' color='error'>
+              Error: {error}
+            </Typography>
+          )}
+          <FormControl sx={{ minWidth: 250 }}>
+            <InputLabel>Select Junket</InputLabel>
+            <Select
+              value={selectedJunketId}
+              label='Select Junket'
+              size='small'
+              onChange={(e) => {
+                setSelectedJunketId(e.target.value)
+                setActiveTabIndex(0)
+              }}
+            >
+              {junkets.map((junket) => (
+                <MenuItem key={junket.id} value={junket.id}>
+                  {junket.name}
+                </MenuItem>
               ))}
-            </div>
-          ))}
-        </div>
-      ))}
-    </div>
-  );
+            </Select>
+          </FormControl>
+        </Stack>
+      </Stack>
+
+      {selectedJunket ? (
+        <JunketComponent
+          junket={selectedJunket}
+          days={days}
+          highlightedSlots={highlightedSlots}
+          activeTabIndex={activeTabIndex}
+          setActiveTabIndex={setActiveTabIndex}
+          handleDragEnd={handleDragEnd}
+          onBoardNeedsRefresh={fetchJunkets}
+        />
+      ) : (
+        <Typography color='text.secondary'>No data available.</Typography>
+      )}
+    </Box>
+  )
 }
-
-// Basic inline styles to make it look acceptable
-const formStyle = {
-  display: 'flex',
-  flexDirection: 'column',
-  gap: '10px',
-  padding: '15px',
-  border: '1px solid #ddd',
-  borderRadius: '8px',
-  backgroundColor: '#f9f9f9'
-};
-
-const cardStyle = {
-  border: '1px solid #ccc',
-  borderRadius: '8px',
-  padding: '15px',
-  marginBottom: '15px',
-  backgroundColor: '#fff'
-};
-
-export default App;
