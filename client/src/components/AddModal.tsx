@@ -2,7 +2,7 @@ import { Box, Button, Dialog, DialogActions, DialogContent, DialogTitle, Tab, Ta
 import { DatePicker } from '@mui/x-date-pickers/DatePicker'
 import dayjs, { Dayjs } from 'dayjs'
 import { useState } from 'react'
-import type { Junket } from '../types'
+import type { Junket } from '../utils/types'
 
 interface TabPanelProps {
   children?: React.ReactNode
@@ -49,7 +49,7 @@ export default function AddModal({ open, onClose, junkets, onSuccess }: AddModal
   const [roomJunketId, setRoomJunketId] = useState('')
   const [roomDayId, setRoomDayId] = useState('')
   const [roomName, setRoomName] = useState('')
-  const [roomColour, setRoomColour] = useState('#ffffff')
+  const [roomColor, setRoomColor] = useState('#ffffff')
 
   const handleTabChange = (_event: React.SyntheticEvent, newValue: number) => {
     setTabValue(newValue)
@@ -107,14 +107,14 @@ export default function AddModal({ open, onClose, junkets, onSuccess }: AddModal
         body: JSON.stringify({
           dayId: roomDayId,
           name: roomName,
-          colour: roomColour,
+          color: roomColor,
         }),
       })
       if (res.ok) {
         setRoomJunketId('')
         setRoomDayId('')
         setRoomName('')
-        setRoomColour('#ffffff')
+        setRoomColor('#ffffff')
         onSuccess()
         onClose()
       }
@@ -229,10 +229,10 @@ export default function AddModal({ open, onClose, junkets, onSuccess }: AddModal
             margin='dense'
           />
           <TextField
-            label='Colour'
+            label='Color'
             type='color'
-            value={roomColour}
-            onChange={(e) => setRoomColour(e.target.value)}
+            value={roomColor}
+            onChange={(e) => setRoomColor(e.target.value)}
             fullWidth
             margin='dense'
           />

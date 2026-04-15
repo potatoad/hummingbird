@@ -7,7 +7,7 @@ export interface Slot {
   outlet?: string
   notes?: string
   territory?: string
-  colour: string
+  color: string
   status: Status
   isVirtual: boolean
   slotType: SlotType
@@ -24,7 +24,7 @@ export interface Slot {
 
 export interface Room {
   id: string
-  colour: string
+  color: string
   name: string
   producer?: string | null
   timer?: string | null

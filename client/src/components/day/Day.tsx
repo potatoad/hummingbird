@@ -1,8 +1,8 @@
-import { Box, Button, Link, Paper, Typography } from '@mui/material'
+import { Box, Button, Stack, Typography } from '@mui/material'
 import React, { useState } from 'react'
-import type { Day } from '../../types'
-import AddRoomModal from '../room/AddRoomModal'
+import type { Day } from '../../utils/types'
 import RoomComponent from '../room/Room'
+import RoomModal from '../room/RoomModal'
 
 interface DayProps {
   day: Day
@@ -17,38 +17,49 @@ const DayComponent: React.FC<DayProps> = ({ day, highlightedSlots, onBoardNeedsR
   }
   return (
     <>
-      <Button
-        variant='contained'
-        color='error'
-        sx={{ mb: 2 }}
-        onClick={() => {
-          fetch(`/days/${day.id}`, {
-            method: 'DELETE',
-          })
-          onBoardNeedsRefresh()
-        }}
-      >
-        Delete Day
-      </Button>
-      <Button
-        variant='contained'
-        color='success'
-        onClick={() => {
-          setOpen(true)
-        }}
-      >
-        Add Room
-      </Button>
       {day.greenroomUrl && (
-        <Paper sx={{ mb: 3, p: 2 }}>
-          <Typography variant='h3'>Greenroom</Typography>
-          <Typography variant='body2'>
-            <Link href={day.greenroomUrl}>{day.greenroomUrl}</Link>
-          </Typography>
-          <Typography variant='body2'>Password: {day.greenroomPassword}</Typography>
-        </Paper>
+        <Stack direction={'row'} sx={{ justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+          <Stack direction={'row'} spacing={6}>
+            <Box>
+              <Typography variant='subtitle2'>Greenroom</Typography>
+              <Typography variant='h4'>
+                {day.greenroomUrl && (
+                  <a href={day.greenroomUrl} target='_blank' rel='noreferrer'>
+                    {day.greenroomUrl}
+                  </a>
+                )}
+              </Typography>
+            </Box>
+            <Box>
+              <Typography variant='subtitle2'>Greenroom Password</Typography>
+              <Typography variant='h4'>{day.greenroomPassword || ''}</Typography>
+            </Box>
+            <Box>
+              <Typography variant='subtitle2'>Press Hospitality</Typography>
+              <Typography variant='h4'>
+                {day.pressHospitalityURL && (
+                  <a href={day.pressHospitalityURL} target='_blank' rel='noreferrer'>
+                    {day.pressHospitalityURL}
+                  </a>
+                )}
+              </Typography>
+            </Box>
+          </Stack>
+          <Stack direction={'row'} spacing={2}>
+            <Button
+              variant='contained'
+              color='success'
+              size='small'
+              onClick={() => {
+                setOpen(true)
+              }}
+            >
+              Add Room
+            </Button>
+          </Stack>
+        </Stack>
       )}
-      <Box sx={{ display: 'flex', gap: 3, overflowX: 'auto', pb: 2, height: '100%' }}>
+      <Box sx={{ display: 'flex', gap: 2, overflowX: 'auto', pb: 2, height: '100%' }}>
         {day.rooms.map((room) => (
           <RoomComponent
             key={room.id}
@@ -58,7 +69,13 @@ const DayComponent: React.FC<DayProps> = ({ day, highlightedSlots, onBoardNeedsR
           />
         ))}
       </Box>
-      <AddRoomModal open={open} onClose={onClose} dayId={day.id} />
+      <RoomModal
+        open={open}
+        onClose={onClose}
+        dayId={day.id}
+        numberOfRooms={day.rooms.length}
+        handleDeleteRoom={onBoardNeedsRefresh}
+      />
     </>
   )
 }

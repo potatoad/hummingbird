@@ -13,7 +13,7 @@ const theme = createTheme({
   // },
   typography: {
     h1: {
-      fontSize: '2.4rem',
+      fontSize: '1.8rem',
       fontWeight: 'bold',
       lineHeight: '1.1',
     },
@@ -50,17 +50,6 @@ const theme = createTheme({
       },
     },
   },
-  // components: {
-  //   MuiSelect: {
-  //     styleOverrides: {
-  //       select: {
-  //         fontSize: '0.8rem',
-  //         fontWeight: 'bold',
-  //         padding: 0,
-  //       },
-  //     },
-  //   },
-  // },
 })
 
 createRoot(document.getElementById('root')!).render(

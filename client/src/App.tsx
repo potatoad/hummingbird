@@ -1,10 +1,9 @@
 import { type DropResult } from '@hello-pangea/dnd'
-import { Button, Container, FormControl, InputLabel, MenuItem, Select, Stack, Typography } from '@mui/material'
+import { Box, FormControl, InputLabel, MenuItem, Select, Stack, Typography } from '@mui/material'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { io, Socket } from 'socket.io-client'
-import AddModal from './components/AddModal'
 import JunketComponent from './components/junket/Junket'
-import { type Junket } from './types'
+import { type Junket } from './utils/types'
 
 const API_URL = '' // using Vite proxy
 
@@ -14,7 +13,6 @@ export default function App() {
   const [activeTabIndex, setActiveTabIndex] = useState(0)
   const [highlightedSlots, setHighlightedSlots] = useState<string[]>([])
   const [error, setError] = useState<string | null>(null)
-  const [addModalOpen, setAddModalOpen] = useState(false)
 
   const socketRef = useRef<Socket | null>(null)
 
@@ -122,14 +120,14 @@ export default function App() {
   const days = selectedJunket?.days || []
 
   return (
-    <Container maxWidth='xl' sx={{ display: 'flex', flexDirection: 'column', py: 4 }}>
+    <Box sx={{ p: 2 }}>
       <Stack direction={'row'} sx={{ justifyContent: 'space-between', alignItems: 'center' }}>
         <Stack direction={'row'} spacing={1} sx={{ alignItems: 'center', position: 'relative' }}>
           <img
             src='/favicon/favicon.svg'
-            width={'75px'}
-            height={'75px'}
-            style={{ position: 'absolute', top: '-30px', left: '-15px' }}
+            width={'60px'}
+            height={'60px'}
+            style={{ position: 'absolute', top: '-23px', left: '-8px' }}
             alt='Hummingbird Logo'
           />
           <Typography variant='h1' component='h1' fontWeight='bold' sx={{ pl: '30px' }}>
@@ -154,6 +152,7 @@ export default function App() {
             <Select
               value={selectedJunketId}
               label='Select Junket'
+              size='small'
               onChange={(e) => {
                 setSelectedJunketId(e.target.value)
                 setActiveTabIndex(0)
@@ -166,9 +165,6 @@ export default function App() {
               ))}
             </Select>
           </FormControl>
-          <Button variant='contained' onClick={() => setAddModalOpen(true)}>
-            Add
-          </Button>
         </Stack>
       </Stack>
 
@@ -179,14 +175,12 @@ export default function App() {
           highlightedSlots={highlightedSlots}
           activeTabIndex={activeTabIndex}
           setActiveTabIndex={setActiveTabIndex}
-          handleTabChange={(_, val) => setActiveTabIndex(val)}
           handleDragEnd={handleDragEnd}
           onBoardNeedsRefresh={fetchJunkets}
         />
       ) : (
         <Typography color='text.secondary'>No data available.</Typography>
       )}
-      <AddModal open={addModalOpen} onClose={() => setAddModalOpen(false)} junkets={junkets} onSuccess={fetchJunkets} />
-    </Container>
+    </Box>
   )
 }

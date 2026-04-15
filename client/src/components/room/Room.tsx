@@ -1,11 +1,12 @@
 import { Droppable } from '@hello-pangea/dnd'
-import { Check, Delete, Edit } from '@mui/icons-material'
+import { Check, Edit } from '@mui/icons-material'
 import { Box, Grid, IconButton, Paper, TextField, Typography } from '@mui/material'
 import dayjs from 'dayjs'
 import React, { useEffect, useMemo, useState } from 'react'
-import type { Room } from '../../types'
-import EditSlotModal from '../slot/EditSlotModal'
+import type { Room } from '../../utils/types'
 import SlotComponent from '../slot/Slot'
+import EditSlotModal from '../slot/SlotModal'
+import RoomModal from './RoomModal'
 
 interface RoomProps {
   room: Room
@@ -41,7 +42,7 @@ const RoomComponent: React.FC<RoomProps> = ({ room, highlightedSlots, onBoardNee
     setEditingName(false)
   }
 
-  const deleteRoom = async () => {
+  const handleDeleteRoom = async () => {
     try {
       await fetch(`/rooms/${room.id}`, {
         method: 'DELETE',
@@ -53,7 +54,7 @@ const RoomComponent: React.FC<RoomProps> = ({ room, highlightedSlots, onBoardNee
   }
 
   // Assuming duration and turnaround in DB are in minutes
-  const TURNAROUND_MINUTES = room.turnaround || 0
+  const TURNAROUND_SECONDS = room.turnaround || 0
 
   const slotsWithTimes = useMemo(() => {
     const result = room.slots.reduce(
@@ -66,7 +67,7 @@ const RoomComponent: React.FC<RoomProps> = ({ room, highlightedSlots, onBoardNee
 
         // 2. Calculate the start time for the NEXT slot
         const duration = slot.duration || 0
-        const nextTime = acc.currentTime.add(duration + TURNAROUND_MINUTES, 'minute')
+        const nextTime = acc.currentTime.add(duration, 'second').add(TURNAROUND_SECONDS, 'second')
 
         return {
           currentTime: nextTime,
@@ -77,7 +78,7 @@ const RoomComponent: React.FC<RoomProps> = ({ room, highlightedSlots, onBoardNee
     )
 
     return result.items
-  }, [room, PRESET_START_TIME, TURNAROUND_MINUTES])
+  }, [room, PRESET_START_TIME, TURNAROUND_SECONDS])
 
   return (
     <Paper
@@ -86,7 +87,7 @@ const RoomComponent: React.FC<RoomProps> = ({ room, highlightedSlots, onBoardNee
         p: 1,
         display: 'flex',
         flexDirection: 'column',
-        background: `linear-gradient(0deg, ${room.colour}00 80%, ${room.colour}ff 100%)`,
+        background: `linear-gradient(0deg, ${room.color}00 80%, ${room.color}ff 100%)`,
         backgroundColor: '#f9f9f9',
       }}
     >
@@ -119,11 +120,8 @@ const RoomComponent: React.FC<RoomProps> = ({ room, highlightedSlots, onBoardNee
           ) : (
             <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
               <Typography variant='h3'>{room.name}</Typography>
-              <IconButton size='small' onClick={() => setEditingName(true)} sx={{ ml: 'auto' }}>
+              <IconButton size='small' onClick={() => setIsModalOpen(true)} sx={{ ml: 'auto' }}>
                 <Edit fontSize='small' />
-              </IconButton>
-              <IconButton size='small' onClick={() => deleteRoom()}>
-                <Delete fontSize='small' />
               </IconButton>
             </Box>
           )}
@@ -161,8 +159,12 @@ const RoomComponent: React.FC<RoomProps> = ({ room, highlightedSlots, onBoardNee
         )}
         {room.zoomLink && (
           <Grid size={6}>
-            <Typography variant='subtitle2'>Stream URL</Typography>
-            <Typography variant='h6'>{room.zoomLink}</Typography>
+            <Typography variant='subtitle2'>Zoom Meeting URL</Typography>
+            <Typography variant='h6'>
+              <a href={room.zoomLink} target='_blank' rel='noopener noreferrer'>
+                {room.zoomLink}
+              </a>
+            </Typography>
           </Grid>
         )}
       </Grid>
@@ -235,6 +237,13 @@ const RoomComponent: React.FC<RoomProps> = ({ room, highlightedSlots, onBoardNee
           }}
         />
       </Box>
+      <RoomModal
+        open={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        dayId={room.dayId}
+        room={room}
+        handleDeleteRoom={handleDeleteRoom}
+      />
     </Paper>
   )
 }

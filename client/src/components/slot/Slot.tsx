@@ -2,10 +2,10 @@ import { Draggable } from '@hello-pangea/dnd'
 import { DragHandle, EditSquare } from '@mui/icons-material'
 import { Box, FormControl, Grid, IconButton, MenuItem, Paper, Select, Typography } from '@mui/material'
 import React, { useState } from 'react'
-import type { Slot } from '../../types'
 import { contrastingColor, contrastingColorBlendMode } from '../../utils/contrastingColor'
 import { getStatusColor } from '../../utils/statusColors'
-import EditSlotModal from './EditSlotModal' // <-- Make sure this path is correct for your app!
+import type { Slot } from '../../utils/types'
+import EditSlotModal from './SlotModal' // <-- Make sure this path is correct for your app!
 
 // Extend Slot specifically for the UI to accept the calculated time from Room
 type SlotWithTime = Slot & { calculatedStartTime?: string }
@@ -21,8 +21,8 @@ const SlotComponent: React.FC<SlotProps> = ({ slot, index, isHighlighted, onBoar
   const isCancelled = slot.status === 'CANCELLED'
   // const isBreak = slot.slotType === 'BREAK' || slot.slotType === 'BUFFER'
 
-  // Use the slot's DB colour, or fallback to the status color map
-  const colour = getStatusColor(slot.isBreak, slot.status)
+  // Use the slot's DB color, or fallback to the status color map
+  const color = getStatusColor(slot.isBreak, slot.status)
 
   // Removed the incorrect `: boolean` type annotation here
   const [isModalOpen, setIsModalOpen] = useState(false)
@@ -60,7 +60,7 @@ const SlotComponent: React.FC<SlotProps> = ({ slot, index, isHighlighted, onBoar
               width: '100%',
               backgroundColor: slot.isVirtual ? '#fff2cc' : slot.isBreak ? '#dadada' : undefined,
               overflow: 'hidden',
-              boxShadow: isHighlighted ? `0 0 10px 2px ${colour}` : undefined,
+              boxShadow: isHighlighted ? `0 0 10px 2px ${color}` : undefined,
               transition: 'box-shadow 0.3s ease-in-out',
             }}
           >
@@ -106,7 +106,7 @@ const SlotComponent: React.FC<SlotProps> = ({ slot, index, isHighlighted, onBoar
               </Grid>
 
               {/* Right Status Area */}
-              <Grid size={3} container sx={{ background: colour, p: 1, position: 'relative' }}>
+              <Grid size={3} container sx={{ background: color, p: 1, position: 'relative' }}>
                 {/* Hooked up the onClick handler to open the modal */}
                 <IconButton
                   aria-label='edit slot'
@@ -116,8 +116,8 @@ const SlotComponent: React.FC<SlotProps> = ({ slot, index, isHighlighted, onBoar
                     position: 'absolute',
                     top: '5px',
                     right: '5px',
-                    color: contrastingColor(colour),
-                    mixBlendMode: contrastingColorBlendMode ? contrastingColorBlendMode(colour) : 'overlay',
+                    color: contrastingColor(color),
+                    mixBlendMode: contrastingColorBlendMode ? contrastingColorBlendMode(color) : 'overlay',
                   }}
                 >
                   <EditSquare fontSize='small' />
@@ -131,8 +131,8 @@ const SlotComponent: React.FC<SlotProps> = ({ slot, index, isHighlighted, onBoar
                     position: 'absolute',
                     bottom: 0,
                     right: '5px',
-                    color: contrastingColor(colour),
-                    mixBlendMode: contrastingColorBlendMode ? contrastingColorBlendMode(colour) : 'overlay',
+                    color: contrastingColor(color),
+                    mixBlendMode: contrastingColorBlendMode ? contrastingColorBlendMode(color) : 'overlay',
                     cursor: 'grab',
                   }}
                 >

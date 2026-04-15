@@ -1,47 +1,66 @@
 import { Circle } from '@mui/icons-material'
 import { Button, Dialog, DialogActions, DialogContent, DialogTitle, IconButton, Stack, TextField } from '@mui/material'
+import { colors } from '@utils/defaultColors'
+import type { Room } from '@utils/types'
 import { useState } from 'react'
-import { colors } from '../../utils/defaultColors'
 
 interface AddRoomModalProps {
   open: boolean
   onClose: () => void
   dayId: string
+  room?: Room
+  numberOfRooms?: number
+  handleDeleteRoom: () => void
 }
 
-const AddRoomModal = ({ open, onClose, dayId }: AddRoomModalProps) => {
-  const [roomName, setRoomName] = useState('')
-  const [roomColour, setRoomColour] = useState('#ffffff')
-  const [roomProducer, setRoomProducer] = useState('')
-  const [roomTimer, setRoomTimer] = useState('')
-  const [roomTechnician, setRoomTechnician] = useState('')
-  const [roomStreamURL, setRoomStreamURL] = useState('')
-  const [roomZoomLink, setRoomZoomLink] = useState('')
+const RoomModal = ({ open, onClose, dayId, room, numberOfRooms, handleDeleteRoom }: AddRoomModalProps) => {
+  const [roomName, setRoomName] = useState(room?.name || '')
+  const [roomColor, setRoomColor] = useState(room?.color || '#ffffff')
+  const [roomProducer, setRoomProducer] = useState(room?.producer || '')
+  const [roomTimer, setRoomTimer] = useState(room?.timer || '')
+  const [roomTechnician, setRoomTechnician] = useState(room?.technician || '')
+  const [roomStreamURL, setRoomStreamURL] = useState(room?.streamURL || '')
+  const [roomZoomLink, setRoomZoomLink] = useState(room?.zoomLink || '')
 
-  const handleNewRoom = async (dayId: string, roomName: string, roomColour: string) => {
-    fetch(`/rooms`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        dayId,
-        name: roomName,
-        colour: roomColour,
-        producer: roomProducer,
-        timer: roomTimer,
-        technician: roomTechnician,
-        streamURL: roomStreamURL,
-        zoomLink: roomZoomLink,
-      }),
-    })
-    setRoomName('')
-    setRoomColour('#ffffff')
+  const handleNewRoom = async (dayId: string, roomName: string, roomColor: string) => {
+    if (room && room.id) {
+      fetch(`/rooms/${room.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: roomName,
+          color: roomColor,
+          producer: roomProducer,
+          timer: roomTimer,
+          technician: roomTechnician,
+          streamURL: roomStreamURL,
+          zoomLink: roomZoomLink,
+        }),
+      })
+    } else {
+      fetch(`/rooms`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          dayId,
+          name: roomName,
+          color: roomColor,
+          producer: roomProducer,
+          timer: roomTimer,
+          technician: roomTechnician,
+          streamURL: roomStreamURL,
+          zoomLink: roomZoomLink,
+          orderIndex: numberOfRooms ? numberOfRooms + 1 : 1,
+        }),
+      })
+    }
     onClose()
   }
 
   return (
     <>
       <Dialog open={open} onClose={onClose} fullWidth maxWidth='sm'>
-        <DialogTitle>Add Room</DialogTitle>
+        <DialogTitle>{room ? 'Edit' : 'Create'} Room</DialogTitle>
         <DialogContent>
           <Stack>
             <TextField
@@ -53,10 +72,10 @@ const AddRoomModal = ({ open, onClose, dayId }: AddRoomModalProps) => {
             />
             <Stack direction='row' alignItems='center' spacing={1} sx={{ mt: 2 }}>
               <TextField
-                label='Colour'
+                label='Color'
                 type='color'
-                value={roomColour}
-                onChange={(e) => setRoomColour(e.target.value)}
+                value={roomColor}
+                onChange={(e) => setRoomColor(e.target.value)}
                 fullWidth
                 margin='dense'
               />
@@ -64,8 +83,8 @@ const AddRoomModal = ({ open, onClose, dayId }: AddRoomModalProps) => {
                 {colors.map((color) => (
                   <IconButton
                     key={color}
-                    sx={{ color: color, border: roomColour === color ? '2px solid' : 'none', p: 0.5 }}
-                    onClick={() => setRoomColour(color)}
+                    sx={{ color: color, border: roomColor === color ? '2px solid' : 'none', p: 0.5 }}
+                    onClick={() => setRoomColor(color)}
                   >
                     <Circle />
                   </IconButton>
@@ -110,9 +129,10 @@ const AddRoomModal = ({ open, onClose, dayId }: AddRoomModalProps) => {
           </Stack>
         </DialogContent>
         <DialogActions sx={{ p: 2 }}>
+          <Button onClick={handleDeleteRoom}>Delete</Button>
           <Button onClick={onClose}>Cancel</Button>
-          <Button variant='contained' onClick={() => handleNewRoom(dayId, roomName, roomColour)}>
-            Add
+          <Button variant='contained' onClick={() => handleNewRoom(dayId, roomName, roomColor)}>
+            {room ? 'Save' : 'Create'}
           </Button>
         </DialogActions>
       </Dialog>
@@ -120,4 +140,4 @@ const AddRoomModal = ({ open, onClose, dayId }: AddRoomModalProps) => {
   )
 }
 
-export default AddRoomModal
+export default RoomModal

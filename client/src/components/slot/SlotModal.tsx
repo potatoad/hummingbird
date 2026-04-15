@@ -22,14 +22,14 @@ type SlotData = {
   roomId: string
 }
 
-interface EditSlotModalProps {
+interface SlotModalProps {
   open: boolean
   slot: Partial<SlotData>
   onClose: () => void
   onSave: (updatedFields: Partial<SlotData>) => Promise<void>
 }
 
-export default function EditSlotModal({ open, slot, onClose, onSave }: EditSlotModalProps) {
+export default function SotModal({ open, slot, onClose, onSave }: SlotModalProps) {
   function getInitialFormData(s: Partial<SlotData>) {
     return {
       name: s.name,
