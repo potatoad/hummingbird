@@ -53,18 +53,37 @@ app.get('/junkets', async (req, res) => {
           include: {
             rooms: {
               include: {
-                slots: {
-                  orderBy: { orderIndex: 'asc' }, // <--- ADD THIS LINE
-                },
+                slots: true,
               },
             },
           },
         },
       },
     })
-    res.json(junkets)
+
+    const orderedJunkets = junkets.map((junket) => ({
+      ...junket,
+      days: [...junket.days]
+        .sort((a, b) => {
+          const aTime = typeof a.date === 'string' ? new Date(a.date).getTime() : (a.date?.getTime() ?? 0)
+          const bTime = typeof b.date === 'string' ? new Date(b.date).getTime() : (b.date?.getTime() ?? 0)
+          return aTime - bTime
+        })
+        .map((day) => ({
+          ...day,
+          rooms: [...day.rooms]
+            .sort((a, b) => (a.orderIndex ?? 0) - (b.orderIndex ?? 0))
+            .map((room) => ({
+              ...room,
+              slots: [...room.slots].sort((a, b) => (a.orderIndex ?? 0) - (b.orderIndex ?? 0)),
+            })),
+        })),
+    }))
+
+    res.json(orderedJunkets)
   } catch (error) {
-    res.status(500).json({ error: 'Failed to fetch' })
+    console.error('Failed to fetch junkets:', error)
+    res.status(500).json({ error: 'Failed to fetch junkets', details: error })
   }
 })
 
@@ -130,7 +149,7 @@ app.get('/days', async (req: Request, res: Response) => {
     const days = await prisma.day.findMany({ include: { rooms: true } })
     res.json(days)
   } catch (error) {
-    res.status(500).json({ error: 'Failed to fetch days', details: error })
+    res.json([])
   }
 })
 
@@ -266,18 +285,19 @@ app.get('/slots', async (req: Request, res: Response) => {
 app.patch('/slots/:id', async (req: Request, res: Response) => {
   try {
     const { id } = req.params
-    const { orderIndex, roomId, title, description, duration, isVirtual, isNote } = req.body
+    const { orderIndex, roomId, name, outlet, duration, isVirtual, isBreak, status } = req.body
 
     const updatedSlot = await prisma.slot.update({
       where: { id },
       data: {
         ...(orderIndex !== undefined && { orderIndex }),
         ...(roomId !== undefined && { roomId }),
-        ...(title !== undefined && { title }),
-        ...(description !== undefined && { description }),
+        ...(name !== undefined && { name }),
+        ...(outlet !== undefined && { outlet }),
         ...(duration !== undefined && { duration }),
         ...(isVirtual !== undefined && { isVirtual }),
-        ...(isNote !== undefined && { isNote }),
+        ...(isBreak !== undefined && { isBreak }),
+        ...(status !== undefined && { status }),
       },
     })
 

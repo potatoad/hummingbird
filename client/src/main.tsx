@@ -1,4 +1,7 @@
 import { createTheme, ThemeProvider } from '@mui/material'
+import { LocalizationProvider } from '@mui/x-date-pickers'
+import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs'
+import 'dayjs/locale/en-gb'
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import App from './App.tsx'
@@ -9,9 +12,15 @@ const theme = createTheme({
   //   mode: 'dark',
   // },
   typography: {
+    h1: {
+      fontSize: '2.4rem',
+      fontWeight: 'bold',
+      lineHeight: '1.1',
+    },
     h3: {
       fontSize: '1.4rem',
       fontWeight: 'bold',
+      lineHeight: '1.1',
     },
     h4: {
       fontSize: '1rem',
@@ -34,12 +43,32 @@ const theme = createTheme({
       lineHeight: '1.1',
     },
   },
+  components: {
+    MuiMenuItem: {
+      styleOverrides: {
+        root: { fontSize: '0.8rem', fontWeight: 'bold', padding: '4px 8px' },
+      },
+    },
+  },
+  // components: {
+  //   MuiSelect: {
+  //     styleOverrides: {
+  //       select: {
+  //         fontSize: '0.8rem',
+  //         fontWeight: 'bold',
+  //         padding: 0,
+  //       },
+  //     },
+  //   },
+  // },
 })
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <ThemeProvider theme={theme}>
-      <App />
+      <LocalizationProvider adapterLocale='en-gb' dateAdapter={AdapterDayjs}>
+        <App />
+      </LocalizationProvider>
     </ThemeProvider>
   </StrictMode>,
 )

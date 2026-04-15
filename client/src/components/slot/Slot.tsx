@@ -1,11 +1,11 @@
 import { Draggable } from '@hello-pangea/dnd'
 import { DragHandle, EditSquare } from '@mui/icons-material'
-import { Box, Grid, IconButton, Paper, Typography } from '@mui/material'
+import { Box, FormControl, Grid, IconButton, MenuItem, Paper, Select, Typography } from '@mui/material'
 import React, { useState } from 'react'
-import { contrastingColor, contrastingColorBlendMode } from '../../contrastingColor'
 import type { Slot } from '../../types'
+import { contrastingColor, contrastingColorBlendMode } from '../../utils/contrastingColor'
 import { getStatusColor } from '../../utils/statusColors'
-import EditSlotModal from '../EditSlotModal' // <-- Make sure this path is correct for your app!
+import EditSlotModal from './EditSlotModal' // <-- Make sure this path is correct for your app!
 
 // Extend Slot specifically for the UI to accept the calculated time from Room
 type SlotWithTime = Slot & { calculatedStartTime?: string }
@@ -19,16 +19,16 @@ interface SlotProps {
 
 const SlotComponent: React.FC<SlotProps> = ({ slot, index, isHighlighted, onBoardNeedsRefresh }) => {
   const isCancelled = slot.status === 'CANCELLED'
-  const isBreak = slot.slotType === 'BREAK' || slot.slotType === 'BUFFER'
+  // const isBreak = slot.slotType === 'BREAK' || slot.slotType === 'BUFFER'
 
   // Use the slot's DB colour, or fallback to the status color map
-  const colour = getStatusColor(isBreak, slot.status)
+  const colour = getStatusColor(slot.isBreak, slot.status)
 
   // Removed the incorrect `: boolean` type annotation here
   const [isModalOpen, setIsModalOpen] = useState(false)
 
   // Added type `any` (or Partial<Slot>) to avoid TS errors
-  const handleSave = async (updatedFields: any) => {
+  const handleSave = async (updatedFields: unknown) => {
     try {
       const response = await fetch(`/slots/${slot.id}`, {
         method: 'PATCH',
@@ -55,10 +55,10 @@ const SlotComponent: React.FC<SlotProps> = ({ slot, index, isHighlighted, onBoar
             ref={provided.innerRef}
             {...provided.draggableProps}
             sx={{
-              m: 1,
+              mb: 1,
               textAlign: 'left',
               width: '100%',
-              backgroundColor: slot.isVirtual ? '#fff2cc' : isBreak ? '#dadada' : undefined,
+              backgroundColor: slot.isVirtual ? '#fff2cc' : slot.isBreak ? '#dadada' : undefined,
               overflow: 'hidden',
               boxShadow: isHighlighted ? `0 0 10px 2px ${colour}` : undefined,
               transition: 'box-shadow 0.3s ease-in-out',
@@ -67,29 +67,33 @@ const SlotComponent: React.FC<SlotProps> = ({ slot, index, isHighlighted, onBoar
             <Grid container>
               {/* Left Content Area */}
               <Grid size={9} container sx={{ p: 1 }}>
-                {isBreak ? (
+                {slot.isBreak ? (
                   <Box sx={{ alignContent: 'center', textAlign: 'center', width: '100%' }}>
-                    <Typography variant='h5'>{slot.title}</Typography>
+                    <Typography variant='h5'>{slot.name}</Typography>
                   </Box>
                 ) : (
                   <>
-                    <Grid size={4}>
+                    <Grid size={5}>
                       <Typography variant='subtitle2'>Journalist</Typography>
                       <Typography variant='h4' sx={{ textDecoration: isCancelled ? 'line-through' : 'none' }}>
-                        {slot.title || ''}
+                        {slot.name || ''}
                       </Typography>
                     </Grid>
-                    <Grid size={8}>
+                    <Grid size={7}>
                       <Typography variant='subtitle2'>Outlet</Typography>
                       <Typography variant='h5' sx={{ textDecoration: isCancelled ? 'line-through' : 'none' }}>
-                        {slot.description || ''}
+                        {slot.outlet || ''}
                       </Typography>
                     </Grid>
                     <Grid size={1}>
                       <Typography variant='subtitle2'>Order</Typography>
                       <Typography variant='h6'>{index}</Typography>
                     </Grid>
-                    <Grid size={3}>
+                    <Grid size={2}>
+                      <Typography variant='subtitle2'>Check-in</Typography>
+                      <Typography variant='h6'>{slot.checkInTime ? String(slot.checkInTime) : ''}</Typography>
+                    </Grid>
+                    <Grid size={2}>
                       <Typography variant='subtitle2'>Territory</Typography>
                       <Typography variant='h6'>{slot.territory || ''}</Typography>
                     </Grid>
@@ -135,12 +139,33 @@ const SlotComponent: React.FC<SlotProps> = ({ slot, index, isHighlighted, onBoar
                   <DragHandle fontSize='small' />
                 </IconButton>
 
-                <Grid size={12} sx={{ pr: '1em' }}>
+                <Grid size={12} sx={{ pr: '1.25em' }}>
                   <>
-                    {!isBreak && (
-                      <Typography variant='h6' sx={{ mb: 1 }}>
-                        {slot.status || '\u00A0'}
-                      </Typography>
+                    {!slot.isBreak && (
+                      <FormControl variant='standard' fullWidth sx={{ mb: 1 }}>
+                        {/* <InputLabel>Status</InputLabel> */}
+                        <Select
+                          label='Status'
+                          value={slot.status}
+                          onChange={(e) => {
+                            handleSave({ status: e.target.value })
+                          }}
+                          sx={{
+                            fontSize: '0.8rem',
+                            fontWeight: 'bold',
+                            padding: 0,
+                          }}
+                        >
+                          <MenuItem disabled value=''>
+                            <em>Status</em>
+                          </MenuItem>
+                          <MenuItem value={'ARRIVED'}>ARRIVED</MenuItem>
+                          <MenuItem value={'WAITING'}>WAITING</MenuItem>
+                          <MenuItem value={'INTERVIEW'}>INTERVIEW</MenuItem>
+                          <MenuItem value={'COMPLETED'}>COMPLETED</MenuItem>
+                          <MenuItem value={'CANCELLED'}>CANCELLED</MenuItem>
+                        </Select>
+                      </FormControl>
                     )}
                     <Grid container>
                       <Grid size={6}>
@@ -150,8 +175,7 @@ const SlotComponent: React.FC<SlotProps> = ({ slot, index, isHighlighted, onBoar
                       <Grid size={6}>
                         <Typography variant='subtitle2'>Duration</Typography>
                         <Typography variant='h5' sx={{ textDecoration: isCancelled ? 'line-through' : 'none' }}>
-                          {Number.parseInt(slot.duration as number) / 60}{' '}
-                          {(slot.duration as number) / 60 > 1 ? 'mins' : 'min'}
+                          {(slot.duration as number) / 60} {(slot.duration as number) / 60 > 1 ? 'mins' : 'min'}
                         </Typography>
                       </Grid>
                     </Grid>

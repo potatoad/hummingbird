@@ -1,8 +1,8 @@
 import { type DropResult } from '@hello-pangea/dnd'
-import { Box, Container, FormControl, InputLabel, MenuItem, Select, Typography } from '@mui/material'
+import { Button, Container, FormControl, InputLabel, MenuItem, Select, Stack, Typography } from '@mui/material'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { io, Socket } from 'socket.io-client'
-import './App.css'
+import AddModal from './components/AddModal'
 import JunketComponent from './components/junket/Junket'
 import { type Junket } from './types'
 
@@ -13,19 +13,27 @@ export default function App() {
   const [selectedJunketId, setSelectedJunketId] = useState<string>('')
   const [activeTabIndex, setActiveTabIndex] = useState(0)
   const [highlightedSlots, setHighlightedSlots] = useState<string[]>([])
+  const [error, setError] = useState<string | null>(null)
+  const [addModalOpen, setAddModalOpen] = useState(false)
 
   const socketRef = useRef<Socket | null>(null)
 
   const fetchJunkets = useCallback(async () => {
     try {
       const res = await fetch(`${API_URL}/junkets`)
+      if (!res.ok) {
+        throw new Error(`HTTP ${res.status}: ${res.statusText}`)
+      }
       const data: Junket[] = await res.json()
       setJunkets(data)
+      setError(null)
       if (data.length > 0 && !selectedJunketId) {
         setSelectedJunketId(data[0].id)
       }
     } catch (error) {
       console.error('Failed to fetch junkets:', error)
+      setError(error instanceof Error ? error.message : 'Unknown error')
+      setJunkets([])
     }
   }, [selectedJunketId])
 
@@ -114,42 +122,71 @@ export default function App() {
   const days = selectedJunket?.days || []
 
   return (
-    <Container maxWidth='xl' sx={{ height: '100vh', display: 'flex', flexDirection: 'column', py: 4 }}>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-        <Typography variant='h4' component='h1' fontWeight='bold'>
-          Junket Board
-        </Typography>
-        <FormControl sx={{ minWidth: 250 }}>
-          <InputLabel>Select Junket</InputLabel>
-          <Select
-            value={selectedJunketId}
-            label='Select Junket'
-            onChange={(e) => {
-              setSelectedJunketId(e.target.value)
-              setActiveTabIndex(0)
-            }}
-          >
-            {junkets.map((junket) => (
-              <MenuItem key={junket.id} value={junket.id}>
-                {junket.name}
-              </MenuItem>
-            ))}
-          </Select>
-        </FormControl>
-      </Box>
+    <Container maxWidth='xl' sx={{ display: 'flex', flexDirection: 'column', py: 4 }}>
+      <Stack direction={'row'} sx={{ justifyContent: 'space-between', alignItems: 'center' }}>
+        <Stack direction={'row'} spacing={1} sx={{ alignItems: 'center', position: 'relative' }}>
+          <img
+            src='/favicon/favicon.svg'
+            width={'75px'}
+            height={'75px'}
+            style={{ position: 'absolute', top: '-30px', left: '-15px' }}
+            alt='Hummingbird Logo'
+          />
+          <Typography variant='h1' component='h1' fontWeight='bold' sx={{ pl: '30px' }}>
+            Hummingbird
+          </Typography>
+        </Stack>
+        <Stack
+          direction={'row'}
+          spacing={2}
+          sx={{
+            justifyContent: 'flex-end',
+            alignItems: 'stretch',
+          }}
+        >
+          {error && (
+            <Typography variant='body1' color='error'>
+              Error: {error}
+            </Typography>
+          )}
+          <FormControl sx={{ minWidth: 250 }}>
+            <InputLabel>Select Junket</InputLabel>
+            <Select
+              value={selectedJunketId}
+              label='Select Junket'
+              onChange={(e) => {
+                setSelectedJunketId(e.target.value)
+                setActiveTabIndex(0)
+              }}
+            >
+              {junkets.map((junket) => (
+                <MenuItem key={junket.id} value={junket.id}>
+                  {junket.name}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+          <Button variant='contained' onClick={() => setAddModalOpen(true)}>
+            Add
+          </Button>
+        </Stack>
+      </Stack>
 
-      {selectedJunket && days.length > 0 ? (
+      {selectedJunket ? (
         <JunketComponent
           junket={selectedJunket}
           days={days}
           highlightedSlots={highlightedSlots}
           activeTabIndex={activeTabIndex}
+          setActiveTabIndex={setActiveTabIndex}
           handleTabChange={(_, val) => setActiveTabIndex(val)}
           handleDragEnd={handleDragEnd}
+          onBoardNeedsRefresh={fetchJunkets}
         />
       ) : (
         <Typography color='text.secondary'>No data available.</Typography>
       )}
+      <AddModal open={addModalOpen} onClose={() => setAddModalOpen(false)} junkets={junkets} onSuccess={fetchJunkets} />
     </Container>
   )
 }
