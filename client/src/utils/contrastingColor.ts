@@ -19,5 +19,6 @@ export function contrastingColor(color: string) {
 }
 
 export function contrastingColorBlendMode(color: string) {
+  if (luma(color) > 254) return 'darken'
   return luma(color) >= 165 ? 'overlay' : 'soft-light'
 }

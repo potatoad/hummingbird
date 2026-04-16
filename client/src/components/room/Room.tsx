@@ -1,8 +1,8 @@
-import { Droppable } from '@hello-pangea/dnd'
-import { Check, Edit } from '@mui/icons-material'
-import { Box, Grid, IconButton, Paper, TextField, Typography } from '@mui/material'
+import { DragHandle, EditSquare } from '@mui/icons-material'
+import { Box, Grid, IconButton, Paper, Typography } from '@mui/material'
+import { contrastingColor, contrastingColorBlendMode } from '@utils/contrastingColor'
 import dayjs from 'dayjs'
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useMemo, useState } from 'react'
 import type { Room } from '../../utils/types'
 import SlotComponent from '../slot/Slot'
 import EditSlotModal from '../slot/SlotModal'
@@ -10,37 +10,16 @@ import RoomModal from './RoomModal'
 
 interface RoomProps {
   room: Room
+  index: number
   highlightedSlots: string[]
   onBoardNeedsRefresh: () => void
 }
 
-const RoomComponent: React.FC<RoomProps> = ({ room, highlightedSlots, onBoardNeedsRefresh }) => {
+const RoomComponent: React.FC<RoomProps> = ({ room, index, highlightedSlots, onBoardNeedsRefresh }) => {
   // Use the room's planned start time, or default to 09:00 AM
   const PRESET_START_TIME = room.plannedStartTime ? dayjs(room.plannedStartTime) : dayjs().hour(9).minute(0).second(0)
 
   const [isModalOpen, setIsModalOpen] = useState(false)
-  const [editingName, setEditingName] = useState(false)
-  const [localName, setLocalName] = useState(room.name)
-
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setLocalName(room.name)
-  }, [room.name])
-
-  const saveName = async () => {
-    if (localName.trim() && localName !== room.name) {
-      try {
-        await fetch(`/rooms/${room.id}`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name: localName }),
-        })
-      } catch (error) {
-        console.error('Error updating room name', error)
-      }
-    }
-    setEditingName(false)
-  }
 
   const handleDeleteRoom = async () => {
     try {
@@ -82,49 +61,51 @@ const RoomComponent: React.FC<RoomProps> = ({ room, highlightedSlots, onBoardNee
 
   return (
     <Paper
+      id={`room-${index}`}
       sx={{
         minWidth: '650px',
         p: 1,
         display: 'flex',
+        position: 'relative',
         flexDirection: 'column',
-        background: `linear-gradient(0deg, ${room.color}00 80%, ${room.color}ff 100%)`,
+        background: `linear-gradient(0deg, ${room.color}44 80%, ${room.color}ff 100%)`,
         backgroundColor: '#f9f9f9',
       }}
     >
-      <Grid container>
+      <IconButton
+        aria-label='edit slot'
+        onClick={() => setIsModalOpen(true)}
+        sx={{
+          p: 0,
+          position: 'absolute',
+          top: '5px',
+          right: '5px',
+          color: contrastingColor(room.color),
+          mixBlendMode: contrastingColorBlendMode(room.color) || '',
+        }}
+      >
+        <EditSquare fontSize='small' />
+      </IconButton>
+
+      <IconButton
+        aria-label='drag slot'
+        sx={{
+          p: 0,
+          position: 'absolute',
+          top: '35px',
+          right: '5px',
+          color: contrastingColor(room.color),
+          mixBlendMode: contrastingColorBlendMode ? contrastingColorBlendMode(room.color) : 'overlay',
+          cursor: 'grab',
+        }}
+      >
+        <DragHandle fontSize='small' />
+      </IconButton>
+      <Grid container sx={{ color: contrastingColor(room.color) }}>
         <Grid size={9}>
-          {editingName ? (
-            <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-              <TextField
-                value={localName}
-                onChange={(e) => setLocalName(e.target.value)}
-                onBlur={saveName}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') saveName()
-                  if (e.key === 'Escape') {
-                    setLocalName(room.name)
-                    setEditingName(false)
-                  }
-                }}
-                variant='standard'
-                sx={{
-                  flexGrow: 1,
-                  '& .MuiInputBase-input': { m: 0, p: 0, fontSize: '1.4rem', fontWeight: 'bold', lineHeight: '1.1' },
-                }}
-                autoFocus
-              />
-              <IconButton size='small' onClick={() => setEditingName(false)} sx={{ ml: 'auto' }}>
-                <Check fontSize='small' />
-              </IconButton>
-            </Box>
-          ) : (
-            <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-              <Typography variant='h3'>{room.name}</Typography>
-              <IconButton size='small' onClick={() => setIsModalOpen(true)} sx={{ ml: 'auto' }}>
-                <Edit fontSize='small' />
-              </IconButton>
-            </Box>
-          )}
+          <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+            <Typography variant='h3'>{room.name}</Typography>
+          </Box>
         </Grid>
         <Grid size={3}>
           <Typography variant='subtitle2'>Planned Start Time</Typography>
@@ -132,7 +113,7 @@ const RoomComponent: React.FC<RoomProps> = ({ room, highlightedSlots, onBoardNee
         </Grid>
       </Grid>
 
-      <Grid container sx={{ textAlign: 'left', mb: 2 }}>
+      <Grid container sx={{ textAlign: 'left', mb: 2, color: contrastingColor(room.color) }}>
         {room.producer && (
           <Grid size={2}>
             <Typography variant='subtitle2'>Producer</Typography>
@@ -169,23 +150,17 @@ const RoomComponent: React.FC<RoomProps> = ({ room, highlightedSlots, onBoardNee
         )}
       </Grid>
 
-      {/* The Droppable area handles the structural spacing */}
-      <Droppable droppableId={room.id}>
-        {(provided) => (
-          <Box {...provided.droppableProps} ref={provided.innerRef} sx={{ flexGrow: 1, minHeight: '500px' }}>
-            {slotsWithTimes.map((slot, index) => (
-              <SlotComponent
-                key={slot.id}
-                slot={slot}
-                index={index}
-                isHighlighted={highlightedSlots.includes(slot.id)}
-                onBoardNeedsRefresh={onBoardNeedsRefresh}
-              />
-            ))}
-            {provided.placeholder}
-          </Box>
-        )}
-      </Droppable>
+      <Box sx={{ flexGrow: 1, minHeight: '500px' }}>
+        {slotsWithTimes.map((slot, index) => (
+          <SlotComponent
+            key={slot.id}
+            slot={slot}
+            index={index}
+            isHighlighted={highlightedSlots.includes(slot.id)}
+            onBoardNeedsRefresh={onBoardNeedsRefresh}
+          />
+        ))}
+      </Box>
       <Box sx={{ mt: 2, textAlign: 'center' }}>
         <Typography
           variant='button'

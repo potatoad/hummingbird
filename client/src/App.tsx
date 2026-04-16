@@ -75,6 +75,48 @@ export default function App() {
     if (!currentJunket) return
 
     const currentDay = currentJunket.days[activeTabIndex]
+
+    // Check if it's room reordering
+    if (
+      source.droppableId === `day-${currentDay.id}-rooms` &&
+      destination.droppableId === `day-${currentDay.id}-rooms`
+    ) {
+      const [movedRoom] = currentDay.rooms.splice(source.index, 1)
+
+      let newOrderIndex = 0
+      if (currentDay.rooms.length === 0) {
+        newOrderIndex = 1
+      } else if (destination.index === 0) {
+        newOrderIndex = currentDay.rooms[0].orderIndex - 1
+      } else if (destination.index >= currentDay.rooms.length) {
+        newOrderIndex = currentDay.rooms[currentDay.rooms.length - 1].orderIndex + 1
+      } else {
+        const prevOrder = currentDay.rooms[destination.index - 1].orderIndex
+        const nextOrder = currentDay.rooms[destination.index].orderIndex
+        newOrderIndex = (prevOrder + nextOrder) / 2
+      }
+
+      movedRoom.orderIndex = newOrderIndex
+      currentDay.rooms.splice(destination.index, 0, movedRoom)
+      setJunkets(newJunkets)
+
+      try {
+        await fetch(`${API_URL}/rooms/${draggableId}`, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-socket-id': socketRef.current?.id || '',
+          },
+          body: JSON.stringify({ orderIndex: newOrderIndex }),
+        })
+      } catch (error) {
+        console.error('Failed to update room order:', error)
+        fetchJunkets()
+      }
+      return
+    }
+
+    // Slot reordering logic
     const sourceRoom = currentDay.rooms.find((r) => r.id === source.droppableId)
     const destRoom = currentDay.rooms.find((r) => r.id === destination.droppableId)
 

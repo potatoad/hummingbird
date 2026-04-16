@@ -1,4 +1,4 @@
-import { DragDropContext, type DropResult } from '@hello-pangea/dnd'
+import { type DropResult } from '@hello-pangea/dnd'
 import { Edit } from '@mui/icons-material'
 import { Box, Button, Stack, Typography } from '@mui/material'
 import dayjs from 'dayjs'
@@ -38,7 +38,6 @@ const JunketComponent: React.FC<JunketProps> = ({
   highlightedSlots,
   activeTabIndex,
   setActiveTabIndex,
-  handleDragEnd,
   onBoardNeedsRefresh,
 }) => {
   const [isDayModalOpen, setIsDayModalOpen] = useState(false)
@@ -196,19 +195,17 @@ const JunketComponent: React.FC<JunketProps> = ({
         </Stack>
       </Stack>
       <Box sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-        <DragDropContext onDragEnd={handleDragEnd}>
-          {days.length === 0 ? (
-            <Box sx={{ p: 4, textAlign: 'center' }}>
-              <Typography>No days have been added yet. Use Add Day to create the first day.</Typography>
-            </Box>
-          ) : (
-            days.map((day, index) => (
-              <DayPanel key={day.id} value={activeTabIndex} index={index}>
-                <DayComponent day={day} highlightedSlots={highlightedSlots} onBoardNeedsRefresh={onBoardNeedsRefresh} />
-              </DayPanel>
-            ))
-          )}
-        </DragDropContext>
+        {days.length === 0 ? (
+          <Box sx={{ p: 4, textAlign: 'center' }}>
+            <Typography>No days have been added yet. Use Add Day to create the first day.</Typography>
+          </Box>
+        ) : (
+          days.map((day, index) => (
+            <DayPanel key={day.id} value={activeTabIndex} index={index}>
+              <DayComponent day={day} highlightedSlots={highlightedSlots} onBoardNeedsRefresh={onBoardNeedsRefresh} />
+            </DayPanel>
+          ))
+        )}
       </Box>
       <DayModal
         open={isDayModalOpen}

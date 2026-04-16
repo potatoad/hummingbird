@@ -11,7 +11,7 @@ import { Server } from 'socket.io'
 const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL })
 const prisma = new PrismaClient({ adapter })
 
-const app = express()
+export const app = express()
 const httpServer = createServer(app)
 const io = new Server(httpServer, {
   cors: { origin: '*' }, // Allow frontend connections

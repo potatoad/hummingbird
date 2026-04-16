@@ -60,10 +60,11 @@ const DayComponent: React.FC<DayProps> = ({ day, highlightedSlots, onBoardNeedsR
         </Stack>
       )}
       <Box sx={{ display: 'flex', gap: 2, overflowX: 'auto', pb: 2, height: '100%' }}>
-        {day.rooms.map((room) => (
+        {day.rooms.map((room, index) => (
           <RoomComponent
             key={room.id}
             room={room}
+            index={index}
             highlightedSlots={highlightedSlots}
             onBoardNeedsRefresh={onBoardNeedsRefresh}
           />
