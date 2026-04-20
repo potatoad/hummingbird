@@ -65,6 +65,7 @@ const DayComponent: React.FC<DayProps> = ({ day, highlightedSlots, onBoardNeedsR
             key={room.id}
             room={room}
             index={index}
+            numberOfRooms={day.rooms.length}
             highlightedSlots={highlightedSlots}
             onBoardNeedsRefresh={onBoardNeedsRefresh}
           />

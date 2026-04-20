@@ -1,4 +1,3 @@
-import { type DropResult } from '@hello-pangea/dnd'
 import { Box, FormControl, InputLabel, MenuItem, Select, Stack, Typography } from '@mui/material'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { io, Socket } from 'socket.io-client'
@@ -64,100 +63,6 @@ export default function App() {
     }
   }, [highlightSlot, fetchJunkets])
 
-  const handleDragEnd = async (result: DropResult) => {
-    const { destination, source, draggableId } = result
-
-    if (!destination) return
-    if (destination.droppableId === source.droppableId && destination.index === source.index) return
-
-    const newJunkets = JSON.parse(JSON.stringify(junkets)) as Junket[]
-    const currentJunket = newJunkets.find((j) => j.id === selectedJunketId)
-    if (!currentJunket) return
-
-    const currentDay = currentJunket.days[activeTabIndex]
-
-    // Check if it's room reordering
-    if (
-      source.droppableId === `day-${currentDay.id}-rooms` &&
-      destination.droppableId === `day-${currentDay.id}-rooms`
-    ) {
-      const [movedRoom] = currentDay.rooms.splice(source.index, 1)
-
-      let newOrderIndex = 0
-      if (currentDay.rooms.length === 0) {
-        newOrderIndex = 1
-      } else if (destination.index === 0) {
-        newOrderIndex = currentDay.rooms[0].orderIndex - 1
-      } else if (destination.index >= currentDay.rooms.length) {
-        newOrderIndex = currentDay.rooms[currentDay.rooms.length - 1].orderIndex + 1
-      } else {
-        const prevOrder = currentDay.rooms[destination.index - 1].orderIndex
-        const nextOrder = currentDay.rooms[destination.index].orderIndex
-        newOrderIndex = (prevOrder + nextOrder) / 2
-      }
-
-      movedRoom.orderIndex = newOrderIndex
-      currentDay.rooms.splice(destination.index, 0, movedRoom)
-      setJunkets(newJunkets)
-
-      try {
-        await fetch(`${API_URL}/rooms/${draggableId}`, {
-          method: 'PATCH',
-          headers: {
-            'Content-Type': 'application/json',
-            'x-socket-id': socketRef.current?.id || '',
-          },
-          body: JSON.stringify({ orderIndex: newOrderIndex }),
-        })
-      } catch (error) {
-        console.error('Failed to update room order:', error)
-        fetchJunkets()
-      }
-      return
-    }
-
-    // Slot reordering logic
-    const sourceRoom = currentDay.rooms.find((r) => r.id === source.droppableId)
-    const destRoom = currentDay.rooms.find((r) => r.id === destination.droppableId)
-
-    if (!sourceRoom || !destRoom) return
-
-    const [movedSlot] = sourceRoom.slots.splice(source.index, 1)
-
-    let newOrderIndex = 0
-    if (destRoom.slots.length === 0) {
-      newOrderIndex = 1
-    } else if (destination.index === 0) {
-      newOrderIndex = destRoom.slots[0].orderIndex - 1
-    } else if (destination.index >= destRoom.slots.length) {
-      newOrderIndex = destRoom.slots[destRoom.slots.length - 1].orderIndex + 1
-    } else {
-      const prevOrder = destRoom.slots[destination.index - 1].orderIndex
-      const nextOrder = destRoom.slots[destination.index].orderIndex
-      newOrderIndex = (prevOrder + nextOrder) / 2
-    }
-
-    movedSlot.orderIndex = newOrderIndex
-    movedSlot.roomId = destRoom.id
-
-    destRoom.slots.splice(destination.index, 0, movedSlot)
-    setJunkets(newJunkets)
-
-    try {
-      await fetch(`${API_URL}/slots/${draggableId}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-socket-id': socketRef.current?.id || '',
-        },
-        body: JSON.stringify({ orderIndex: newOrderIndex, roomId: destRoom.id }),
-      })
-    } catch (error) {
-      console.error('Failed to update slot order:', error)
-      fetchJunkets()
-    }
-  }
-
   const selectedJunket = junkets.find((j) => j.id === selectedJunketId)
   const days = selectedJunket?.days || []
 
@@ -217,7 +122,6 @@ export default function App() {
           highlightedSlots={highlightedSlots}
           activeTabIndex={activeTabIndex}
           setActiveTabIndex={setActiveTabIndex}
-          handleDragEnd={handleDragEnd}
           onBoardNeedsRefresh={fetchJunkets}
         />
       ) : (

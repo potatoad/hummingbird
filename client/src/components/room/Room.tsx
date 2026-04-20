@@ -1,5 +1,6 @@
-import { DragHandle, EditSquare } from '@mui/icons-material'
+import { EditSquare } from '@mui/icons-material'
 import { Box, Grid, IconButton, Paper, Typography } from '@mui/material'
+import { ArrowLeftIcon, ArrowRightIcon } from '@mui/x-date-pickers'
 import { contrastingColor, contrastingColorBlendMode } from '@utils/contrastingColor'
 import dayjs from 'dayjs'
 import React, { useMemo, useState } from 'react'
@@ -11,11 +12,12 @@ import RoomModal from './RoomModal'
 interface RoomProps {
   room: Room
   index: number
+  numberOfRooms: number
   highlightedSlots: string[]
   onBoardNeedsRefresh: () => void
 }
 
-const RoomComponent: React.FC<RoomProps> = ({ room, index, highlightedSlots, onBoardNeedsRefresh }) => {
+const RoomComponent: React.FC<RoomProps> = ({ room, index, numberOfRooms, highlightedSlots, onBoardNeedsRefresh }) => {
   // Use the room's planned start time, or default to 09:00 AM
   const PRESET_START_TIME = room.plannedStartTime ? dayjs(room.plannedStartTime) : dayjs().hour(9).minute(0).second(0)
 
@@ -88,19 +90,51 @@ const RoomComponent: React.FC<RoomProps> = ({ room, index, highlightedSlots, onB
       </IconButton>
 
       <IconButton
-        aria-label='drag slot'
+        aria-label='move slot left'
         sx={{
           p: 0,
           position: 'absolute',
           top: '35px',
-          right: '5px',
+          right: '25px',
           color: contrastingColor(room.color),
           mixBlendMode: contrastingColorBlendMode ? contrastingColorBlendMode(room.color) : 'overlay',
-          cursor: 'grab',
+          cursor: 'pointer',
+        }}
+        disabled={index === 0}
+        onClick={() => {
+          fetch(`/rooms/${room.id}/move`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ direction: 'left' }),
+          }).then(() => onBoardNeedsRefresh())
         }}
       >
-        <DragHandle fontSize='small' />
+        <ArrowLeftIcon />
       </IconButton>
+
+      <IconButton
+        aria-label='move slot right'
+        sx={{
+          p: 0,
+          position: 'absolute',
+          top: '35px',
+          right: '0px',
+          color: contrastingColor(room.color),
+          mixBlendMode: contrastingColorBlendMode ? contrastingColorBlendMode(room.color) : 'overlay',
+          cursor: 'pointer',
+        }}
+        disabled={index === numberOfRooms - 1}
+        onClick={() => {
+          fetch(`/rooms/${room.id}/move`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ direction: 'right' }),
+          }).then(() => onBoardNeedsRefresh())
+        }}
+      >
+        <ArrowRightIcon />
+      </IconButton>
+
       <Grid container sx={{ color: contrastingColor(room.color) }}>
         <Grid size={9}>
           <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>

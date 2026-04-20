@@ -253,6 +253,58 @@ app.patch('/rooms/:id', async (req: Request, res: Response) => {
   }
 })
 
+app.patch('/rooms/:id/move', async (req: Request, res: Response) => {
+  const moveDirection = req.body.direction
+  const { id } = req.params
+  const senderSocketId = req.headers['x-socket-id'] as string
+
+  try {
+    const room = await prisma.room.findUnique({
+      where: { id },
+    })
+
+    if (!room) {
+      return res.status(404).json({ error: 'Room not found' })
+    }
+    const allRooms = await prisma.room.findMany({
+      where: { dayId: room.dayId },
+      orderBy: { orderIndex: 'asc' },
+    })
+
+    const currentIndex = allRooms.findIndex((r) => r.id === id)
+    const targetIndex = moveDirection === 'up' ? currentIndex - 1 : currentIndex + 1
+
+    if (targetIndex < 0 || targetIndex >= allRooms.length) {
+      return res.status(400).json({ error: 'Cannot move room further in this direction' })
+    }
+
+    const targetRoom = allRooms[targetIndex]
+
+    await prisma.$transaction([
+      prisma.room.update({
+        where: { id: room.id },
+        data: { orderIndex: targetRoom.orderIndex },
+      }),
+      prisma.room.update({
+        where: { id: targetRoom.id },
+        data: { orderIndex: room.orderIndex },
+      }),
+    ])
+
+    if (senderSocketId) {
+      io.except(senderSocketId).emit('board-updated')
+    } else {
+      io.emit('board-updated')
+    }
+
+    res.json({ message: 'Room moved successfully' })
+  } catch (error) {
+    console.error('Error moving room:', error)
+    res.status(500).json({ error: 'Failed to move room' })
+  }
+  res.json({ message: 'Room moved successfully' })
+})
+
 // ==========================================
 // SLOT ROUTES
 // ==========================================

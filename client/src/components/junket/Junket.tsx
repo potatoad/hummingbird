@@ -1,4 +1,3 @@
-import { type DropResult } from '@hello-pangea/dnd'
 import { Edit } from '@mui/icons-material'
 import { Box, Button, Stack, Typography } from '@mui/material'
 import dayjs from 'dayjs'
@@ -19,7 +18,6 @@ interface JunketProps {
   highlightedSlots: string[]
   activeTabIndex: number
   setActiveTabIndex: (index: number) => void
-  handleDragEnd: (result: DropResult) => void
   onBoardNeedsRefresh: () => void
 }
 
