@@ -1,4 +1,4 @@
-import { DragHandle, EditSquare } from '@mui/icons-material'
+import { EditSquare, KeyboardArrowDown, KeyboardArrowUp } from '@mui/icons-material'
 import { Box, FormControl, Grid, IconButton, MenuItem, Paper, Select, Typography } from '@mui/material'
 import React, { useState } from 'react'
 import { contrastingColor, contrastingColorBlendMode } from '../../utils/contrastingColor'
@@ -12,11 +12,12 @@ type SlotWithTime = Slot & { calculatedStartTime?: string }
 interface SlotProps {
   slot: SlotWithTime
   index: number
+  numberOfSlots: number
   isHighlighted: boolean
   onBoardNeedsRefresh?: () => void // <-- Added this prop
 }
 
-const SlotComponent: React.FC<SlotProps> = ({ slot, index, isHighlighted, onBoardNeedsRefresh }) => {
+const SlotComponent: React.FC<SlotProps> = ({ slot, index, numberOfSlots, isHighlighted, onBoardNeedsRefresh }) => {
   const isCancelled = slot.status === 'CANCELLED'
   // const isBreak = slot.slotType === 'BREAK' || slot.slotType === 'BUFFER'
 
@@ -44,7 +45,22 @@ const SlotComponent: React.FC<SlotProps> = ({ slot, index, isHighlighted, onBoar
     }
   }
 
-  // Wrap the entire return in a Fragment so <Draggable> doesn't get confused by the Modal
+  const handleMoveSlot = async (direction: 'up' | 'down') => {
+    try {
+      const response = await fetch(`/slots/${slot.id}/move`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ direction }),
+      })
+
+      if (response.ok) {
+        // if (onBoardNeedsRefresh) onBoardNeedsRefresh()
+      }
+    } catch (error) {
+      console.error('Failed to move slot:', error)
+    }
+  }
+
   return (
     <>
       <Paper
@@ -119,7 +135,25 @@ const SlotComponent: React.FC<SlotProps> = ({ slot, index, isHighlighted, onBoar
             </IconButton>
 
             <IconButton
-              aria-label='drag slot'
+              aria-label='move slot up'
+              onClick={() => handleMoveSlot('up')}
+              sx={{
+                p: 0,
+                position: 'absolute',
+                bottom: '20px',
+                right: '5px',
+                color: contrastingColor(color),
+                mixBlendMode: contrastingColorBlendMode ? contrastingColorBlendMode(color) : 'overlay',
+                cursor: 'pointer',
+              }}
+              disabled={index === 0}
+            >
+              <KeyboardArrowUp fontSize='small' />
+            </IconButton>
+
+            <IconButton
+              aria-label='move slot down'
+              onClick={() => handleMoveSlot('down')}
               sx={{
                 p: 0,
                 position: 'absolute',
@@ -127,10 +161,11 @@ const SlotComponent: React.FC<SlotProps> = ({ slot, index, isHighlighted, onBoar
                 right: '5px',
                 color: contrastingColor(color),
                 mixBlendMode: contrastingColorBlendMode ? contrastingColorBlendMode(color) : 'overlay',
-                cursor: 'grab',
+                cursor: 'pointer',
               }}
+              disabled={index === numberOfSlots - 1}
             >
-              <DragHandle fontSize='small' />
+              <KeyboardArrowDown fontSize='small' />
             </IconButton>
 
             <Grid size={12} sx={{ pr: '1.25em' }}>
@@ -179,7 +214,6 @@ const SlotComponent: React.FC<SlotProps> = ({ slot, index, isHighlighted, onBoar
         </Grid>
       </Paper>
 
-      {/* Render the modal locally, but controlled by state. Keep it OUTSIDE the Draggable! */}
       <EditSlotModal open={isModalOpen} slot={slot} onClose={() => setIsModalOpen(false)} onSave={handleSave} />
     </>
   )

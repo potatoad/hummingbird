@@ -272,7 +272,7 @@ app.patch('/rooms/:id/move', async (req: Request, res: Response) => {
     })
 
     const currentIndex = allRooms.findIndex((r) => r.id === id)
-    const targetIndex = moveDirection === 'up' ? currentIndex - 1 : currentIndex + 1
+    const targetIndex = moveDirection === 'left' ? currentIndex - 1 : currentIndex + 1
 
     if (targetIndex < 0 || targetIndex >= allRooms.length) {
       return res.status(400).json({ error: 'Cannot move room further in this direction' })
@@ -302,7 +302,6 @@ app.patch('/rooms/:id/move', async (req: Request, res: Response) => {
     console.error('Error moving room:', error)
     res.status(500).json({ error: 'Failed to move room' })
   }
-  res.json({ message: 'Room moved successfully' })
 })
 
 // ==========================================
@@ -357,6 +356,58 @@ app.patch('/slots/:id', async (req: Request, res: Response) => {
     res.json(updatedSlot)
   } catch (error) {
     res.status(400).json({ error: 'Failed to update slot', details: error })
+  }
+})
+
+app.patch('/slots/:id/move', async (req: Request, res: Response) => {
+  const moveDirection = req.body.direction
+  const { id } = req.params
+  const senderSocketId = req.headers['x-socket-id'] as string
+
+  try {
+    const slot = await prisma.slot.findUnique({
+      where: { id },
+    })
+
+    if (!slot) {
+      return res.status(404).json({ error: 'Slot not found' })
+    }
+
+    const allSlots = await prisma.slot.findMany({
+      where: { roomId: slot.roomId },
+      orderBy: { orderIndex: 'asc' },
+    })
+
+    const currentIndex = allSlots.findIndex((s) => s.id === id)
+    const targetIndex = moveDirection === 'up' ? currentIndex - 1 : currentIndex + 1
+
+    if (targetIndex < 0 || targetIndex >= allSlots.length) {
+      return res.status(400).json({ error: 'Cannot move slot further in this direction' })
+    }
+
+    const targetSlot = allSlots[targetIndex]
+
+    await prisma.$transaction([
+      prisma.slot.update({
+        where: { id: slot.id },
+        data: { orderIndex: targetSlot.orderIndex },
+      }),
+      prisma.slot.update({
+        where: { id: targetSlot.id },
+        data: { orderIndex: slot.orderIndex },
+      }),
+    ])
+
+    if (senderSocketId) {
+      io.except(senderSocketId).emit('board-updated', { slotId: slot.id })
+    } else {
+      io.emit('board-updated', { slotId: slot.id })
+    }
+
+    res.json({ message: 'Slot moved successfully' })
+  } catch (error) {
+    console.error('Error moving slot:', error)
+    res.status(500).json({ error: 'Failed to move slot' })
   }
 })
 

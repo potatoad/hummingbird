@@ -1,5 +1,5 @@
-import { EditSquare } from '@mui/icons-material'
-import { Box, Grid, IconButton, Paper, Typography } from '@mui/material'
+import { EditSquare, ExpandMore } from '@mui/icons-material'
+import { Accordion, AccordionDetails, AccordionSummary, Box, Grid, IconButton, Paper, Typography } from '@mui/material'
 import { ArrowLeftIcon, ArrowRightIcon } from '@mui/x-date-pickers'
 import { contrastingColor, contrastingColorBlendMode } from '@utils/contrastingColor'
 import dayjs from 'dayjs'
@@ -135,54 +135,52 @@ const RoomComponent: React.FC<RoomProps> = ({ room, index, numberOfRooms, highli
         <ArrowRightIcon />
       </IconButton>
 
-      <Grid container sx={{ color: contrastingColor(room.color) }}>
-        <Grid size={9}>
-          <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-            <Typography variant='h3'>{room.name}</Typography>
-          </Box>
-        </Grid>
-        <Grid size={3}>
-          <Typography variant='subtitle2'>Planned Start Time</Typography>
-          <Typography variant='h4'>{PRESET_START_TIME.format('HH:mm')}</Typography>
-        </Grid>
-      </Grid>
+      <Accordion
+        sx={{ mb: 2, width: 'calc(100% - 50px)', backgroundColor: '#FFFFFF33', boxShadow: 'none' }}
+        slotProps={{ heading: { component: 'h3' } }}
+      >
+        <AccordionSummary expandIcon={<ExpandMore />}>
+          <Typography variant='h3' sx={{ color: contrastingColor(room.color) }}>
+            {room.name}
+          </Typography>
+        </AccordionSummary>
+        <AccordionDetails>
+          <Grid container sx={{ textAlign: 'left', color: contrastingColor(room.color) }} spacing={1}>
+            <Grid size={2}>
+              <Typography variant='subtitle2'>Producer</Typography>
+              <Typography variant='h6'>{room.producer || '\u00a0'}</Typography>
+            </Grid>
+            <Grid size={2}>
+              <Typography variant='subtitle2'>Timer</Typography>
+              <Typography variant='h6'>{room.timer || '\u00a0'}</Typography>
+            </Grid>
+            <Grid size={2}>
+              <Typography variant='subtitle2'>Technician</Typography>
+              <Typography variant='h6'>{room.technician || '\u00a0'}</Typography>
+            </Grid>
 
-      <Grid container sx={{ textAlign: 'left', mb: 2, color: contrastingColor(room.color) }}>
-        {room.producer && (
-          <Grid size={2}>
-            <Typography variant='subtitle2'>Producer</Typography>
-            <Typography variant='h6'>{room.producer}</Typography>
+            <Grid size={6}>
+              <Typography variant='subtitle2'>Stream URL</Typography>
+              <Typography variant='h6'>{room.streamURL || '\u00a0'}</Typography>
+            </Grid>
+
+            <Grid size={2}>
+              <Typography variant='subtitle2'>Planned Start Time</Typography>
+              <Typography variant='h4'>{PRESET_START_TIME.format('HH:mm')}</Typography>
+            </Grid>
+            <Grid size={6}>
+              <Typography variant='subtitle2'>Zoom Meeting URL</Typography>
+              <Typography variant='h6'>
+                {room.zoomLink && (
+                  <a href={room.zoomLink} target='_blank' rel='noopener noreferrer'>
+                    {room.zoomLink}
+                  </a>
+                )}
+              </Typography>
+            </Grid>
           </Grid>
-        )}
-        {room.timer && (
-          <Grid size={2}>
-            <Typography variant='subtitle2'>Timer</Typography>
-            <Typography variant='h6'>{room.timer}</Typography>
-          </Grid>
-        )}
-        {room.technician && (
-          <Grid size={2}>
-            <Typography variant='subtitle2'>Technician</Typography>
-            <Typography variant='h6'>{room.technician}</Typography>
-          </Grid>
-        )}
-        {room.streamURL && (
-          <Grid size={6}>
-            <Typography variant='subtitle2'>Stream URL</Typography>
-            <Typography variant='h6'>{room.streamURL}</Typography>
-          </Grid>
-        )}
-        {room.zoomLink && (
-          <Grid size={6}>
-            <Typography variant='subtitle2'>Zoom Meeting URL</Typography>
-            <Typography variant='h6'>
-              <a href={room.zoomLink} target='_blank' rel='noopener noreferrer'>
-                {room.zoomLink}
-              </a>
-            </Typography>
-          </Grid>
-        )}
-      </Grid>
+        </AccordionDetails>
+      </Accordion>
 
       <Box sx={{ flexGrow: 1, minHeight: '500px' }}>
         {slotsWithTimes.map((slot, index) => (
@@ -190,6 +188,7 @@ const RoomComponent: React.FC<RoomProps> = ({ room, index, numberOfRooms, highli
             key={slot.id}
             slot={slot}
             index={index}
+            numberOfSlots={room.slots.length}
             isHighlighted={highlightedSlots.includes(slot.id)}
             onBoardNeedsRefresh={onBoardNeedsRefresh}
           />
